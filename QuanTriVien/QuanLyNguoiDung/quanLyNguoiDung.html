@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Danh sách người dùng</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    .filter-container {
+      margin-bottom: 20px;
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+
+    .filter-container label {
+      font-weight: bold;
+    }
+
+    .filter-container select {
+      padding: 6px 12px;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      cursor: pointer;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #f2f2f2;
+    }
+
+    button {
+      margin-right: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    .delete {
+      background: red;
+      border: none;
+      color: white;
+    }
+
+    .lock {
+      background: orange;
+      border: none;
+      color: white;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Danh sách người dùng</h1>
+  <!-- Thêm bộ lọc theo vai trò -->
+  <div class="filter-container">
+    <label for="roleFilter">Lọc theo vai trò:</label>
+    <select id="roleFilter" onchange="loadUsers()">
+      <option value="">Tất cả vai trò</option>
+      <option value="1">Quản trị viên</option>
+      <option value="0">Người chơi</option>
+    </select>
+  </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Mã</th>
+        <th>Tên</th>
+        <th>Email</th>
+        <th>Vai trò</th>
+        <th>Thao tác</th>
+      </tr>
+    </thead>
+    <tbody id="userTableBody"></tbody>
+  </table>
+
+  <script>
+    const API_URL = "http://localhost:3000/users";
+
+    async function loadUsers() {
+      <!-- Lấy giá trị lọc từ dropdown -->
+      const roleFilter = document.getElementById('roleFilter').value;
+
+      const res = await fetch(`${API_URL}`);
+      const users = await res.json();
+      const tbody = document.getElementById('userTableBody');
+      tbody.innerHTML = '';
+
+      users.forEach(u => {
+        if (roleFilter !== '' && u.VaiTro != roleFilter) {
+          return;
+        }
+
+        let roleText = u.VaiTro == 1 ? 'Quản trị viên' : 'Người chơi';
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${u.MaNguoiDung}</td>
+          <td>${u.TenNguoiDung}</td>
+          <td>${u.Email}</td>
+          <td>${roleText}</td>
+          <td></td>
+        `;
+
+        // Nếu là người chơi thì thêm nút
+        if (u.VaiTro == 0) {
+          const tdAction = tr.querySelector('td:last-child');
+
+          /*const btnLock = document.createElement('button');
+          btnLock.textContent = 'Khóa';
+          btnLock.className = 'lock';
+          btnLock.onclick = () => lockUser(u.MaNguoiDung);*/
+
+          const btnDelete = document.createElement('button');
+          btnDelete.textContent = 'Xóa';
+          btnDelete.className = 'delete';
+          btnDelete.onclick = () => deleteUser(u.MaNguoiDung);
+
+          //tdAction.appendChild(btnLock);
+          tdAction.appendChild(btnDelete);
+        }
+
+        tbody.appendChild(tr);
+      });
+    }
+
+
+    /*async function lockUser(id) {
+      if (!confirm('Bạn có chắc muốn khóa người dùng này?')) return;
+      try {
+        await fetch(`/lock/${id}`, { method: 'PATCH' });
+        alert('Đã khóa người dùng ' + id);
+        loadUsers();
+      } catch (err) {
+        alert('Lỗi khi khóa: ' + err);
+      }
+    }*/
+
+    async function deleteUser(id) {
+      if (!confirm('Bạn có chắc muốn xóa người dùng này?')) return;
+      try {
+        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        alert('Đã xóa người dùng ' + id);
+        loadUsers();
+      } catch (err) {
+        alert('Lỗi khi xóa: ' + err);
+      }
+    }
+
+    loadUsers();
+  </script>
+</body>
+
+</html>

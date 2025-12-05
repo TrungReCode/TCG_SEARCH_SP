@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản trị viên - TCG Hub</title>
+  
+  <!--<link rel="stylesheet" href="styles.css">-->
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f0f2f5;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      max-width: 800px;
+      margin: 50px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 10px;
+      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      text-align: center;
+    }
+    h1 { margin-bottom: 30px; }
+    .btn {
+      display: inline-block;
+      margin: 10px;
+      padding: 12px 25px;
+      font-size: 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      transition: 0.2s;
+      color: #fff;
+    }
+    .btn-logout { background: #e74c3c; }
+    .btn-news { background: #3498db; }
+    .btn-users { background: #2ecc71; }
+    .btn-games { background: #9b59b6; }
+    .btn-cards { background: #f39c12; }
+    .btn:hover { opacity: 0.9; }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>Bảng điều khiển</h1>
+    <button class="btn btn-logout" id="btnLogout">Đăng xuất</button>
+    <button class="btn btn-news" id="btnNews">Quản lý Tin tức</button>
+    <button class="btn btn-users" id="btnUsers">Quản lý Người dùng</button>
+    <button class="btn btn-games" id="btnGames">Quản lý Trò chơi</button>
+    <button class="btn btn-cards" id="btnCards">Quản lý Thẻ bài</button>
+  </div>
+
+  <script>
+    document.getElementById("btnLogout").addEventListener("click", () => {
+      localStorage.clear();
+      window.location.href = "../index.html";
+    });
+
+    document.getElementById("btnNews").addEventListener("click", () => {
+      window.location.href = "QuanLyTinTuc/quanLyTinTuc.html";
+    });
+
+    document.getElementById("btnUsers").addEventListener("click", () => {
+      window.location.href = "QuanLyNguoiDung/quanLyNguoiDung.html";
+    });
+
+    document.getElementById("btnGames").addEventListener("click", () => {
+      window.location.href = "QuanLyTroChoi/quanLyTroChoi.html";
+    });
+
+    document.getElementById("btnCards").addEventListener("click", () => {
+      window.location.href = "QuanLyTheBai/quanLyTheBai.html";
+    });
+  </script>
+</body>
+</html>

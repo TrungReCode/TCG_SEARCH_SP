@@ -1,0 +1,118 @@
+.news-item {
+  padding: 10px;
+  border-bottom: 1px solid #ddd;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.news-item:hover {
+  background: #f9f9f9;
+}
+
+.btn {
+  padding: 5px 10px;
+  margin-left: 5px;
+  cursor: pointer;
+}
+
+.btn-danger {
+  background: #e74c3c;
+  color: #fff;
+  border: none;
+}
+
+.btn-edit {
+  background: #3498db;
+  color: #fff;
+  border: none;
+}
+
+.btn-add {
+  padding: 8px 15px;
+  margin-top: 10px;
+  background: #2ecc71;
+  color: #fff;
+  border: none;
+  cursor: pointer;
+}
+
+input {
+  width: 100%;
+  padding: 8px;
+  margin: 5px 0;
+}
+
+#editModal {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.6);
+  z-index: 999;
+
+  justify-content: center;
+  align-items: center;
+}
+
+#editModal .modal-content {
+  background: #fff;
+  padding: 25px 30px;
+  width: 90%;
+  max-width: 600px;
+  border-radius: 10px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.2);
+  position: relative;
+}
+
+#editModal h2 {
+  margin-top: 0;
+  font-size: 22px;
+  color: #2c3e50;
+}
+
+#editModal input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0 15px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  font-size: 16px;
+}
+
+.modal-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.close-button {
+  position: absolute;
+  top: 12px;
+  right: 15px;
+  font-size: 24px;
+  color: #999;
+  cursor: pointer;
+  transition: color 0.2s ease;
+}
+
+.close-button:hover {
+  color: #e74c3c;
+}
+
+.toast {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  background: #2ecc71;
+  color: white;
+  padding: 12px 20px;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  font-size: 15px;
+  z-index: 1000;
+}
+
+.toast-error {
+  background: #e74c3c;
+}

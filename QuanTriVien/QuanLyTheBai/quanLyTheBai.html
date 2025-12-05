@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin - Quản lý Thẻ Bài</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+    <header>
+        <h1>Quản lý Thẻ Bài</h1>
+    </header>
+
+    <main>
+        <div id="main-layout">
+
+            <section id="card-list-section">
+                <h2>Danh Sách Thẻ Bài Hiện Có</h2>
+                <button id="open-add-modal-btn">➕ Thêm Thẻ Mới</button>
+
+                <section id="game-selection-section">
+                    <h3>🎮 Chọn Trò Chơi</h3>
+                    <select id="game-selector">
+                        <option value="">-- Đang tải trò chơi... --</option>
+                    </select>
+                    <p id="selected-game-info">
+                        ID đã chọn: <strong id="selected-game-id">N/A</strong>
+                    </p>
+                </section>
+
+                <table id="card-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Trò Chơi</th>
+                            <th>Tên Thẻ</th>
+                            <th>Giá</th>
+                            <th>Hình Ảnh</th>
+                            <th>Thao tác</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                    </tbody>
+                </table>
+                <p id="list-message" class="message"></p>
+            </section>
+
+            <section id="search-card-section">
+                <h2>🔍 Tìm Kiếm Thẻ Bài</h2>
+                <form id="search-card-form">
+                    <div>
+                        <label for="search-q">Tên Thẻ (Q):</label>
+                        <input type="text" id="search-q" placeholder="Nhập tên thẻ...">
+                    </div>
+                    <div>
+                        <label>Trò Chơi Đang Tìm Kiếm:</label>
+                        <p>
+                            <strong id="search-selected-game-name">Tên Trò Chơi N/A</strong>
+                            (ID: <span id="search-selected-game-id">N/A</span>)
+                        </p>
+                        <input type="hidden" id="search-MaTroChoi" required value="1">
+                    </div>
+                    <button type="submit">Tìm Kiếm</button>
+                </form>
+            </section>
+        </div>
+    </main>
+
+    <div id="add-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn">&times;</span>
+            <h2>➕ Thêm Thẻ Bài Mới</h2>
+            <form id="add-card-form">
+                <div>
+                    <label for="TenThe">Tên Thẻ:</label>
+                    <input type="text" id="TenThe" required>
+                </div>
+                <div>
+                    <label>Trò Chơi Đã Chọn:</label>
+                    <p>
+                        <strong id="add-selected-game-name">Tên Trò Chơi N/A</strong>
+                        (ID: <span id="add-selected-game-id">N/A</span>)
+                    </p>
+                    <input type="hidden" id="MaTroChoi" required value="1">
+                </div>
+                <div>
+                    <label for="Gia">Giá (USD):</label>
+                    <input type="number" id="Gia" step="0.01" value="0.00" min="0" required>
+                </div>
+                <div>
+                    <label for="HinhAnh">URL Hình Ảnh:</label>
+                    <input type="url" id="HinhAnh">
+                </div>
+                <div>
+                    <label for="MoTa">Mô Tả:</label>
+                    <textarea id="MoTa" rows="3"></textarea>
+                </div>
+                <div>
+                    <label for="ThuocTinh">Thuộc Tính (JSON):</label>
+                    <textarea id="ThuocTinh" rows="3" placeholder='{"colors": ["W"], "rarity": "common"}'></textarea>
+                </div>
+                <button type="submit">Thêm Thẻ</button>
+                <p id="add-message" class="message"></p>
+            </form>
+        </div>
+    </div>
+
+    <div id="detail-modal" class="modal">
+        <div class="modal-content">
+            <span class="close-btn-detail">&times;</span>
+            <h2>Chi Tiết Thẻ Bài</h2>
+            <div id="card-detail-content">
+                <p>Đang tải chi tiết...</p>
+            </div>
+            <p id="detail-message" class="message"></p>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

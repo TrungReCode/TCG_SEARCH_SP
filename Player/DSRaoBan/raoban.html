@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Quản Lý Rao Bán Thẻ Bài</title>
+    <link rel="stylesheet" href="styles.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+</head>
+
+<body>
+
+    <div class="container">
+        <header>
+            <h1>Thẻ Đang Rao Bán Của Tôi</h1>
+            <button id="btnAdd" class="btn btn-primary" onclick="openSearchModal()">
+                <i class="fas fa-plus"></i> Đăng Bán Thẻ Mới
+            </button>
+        </header>
+
+        <div id="salesList" class="card-grid">
+            <p class="loading-text">Đang tải dữ liệu...</p>
+        </div>
+    </div>
+
+    <div id="modalSearch" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('modalSearch')">&times;</span>
+        <h2>Tìm Kiếm Thẻ Gốc Để Rao Bán</h2>
+        
+        <div class="form-group">
+            <label for="selectMaTroChoi">Chọn Trò Chơi:</label>
+            <select id="selectMaTroChoi" onchange="document.getElementById('searchKeyword').value=''; searchCards('')"></select>
+        </div>
+
+        <div class="form-group">
+            <label for="searchKeyword">Nhập Tên Thẻ:</label>
+            <input type="text" id="searchKeyword" onkeyup="searchCards(this.value)" placeholder="Nhập tên thẻ để tìm kiếm...">
+        </div>
+
+        <div id="searchResults" class="search-results-box">
+            <p>Chọn trò chơi và bắt đầu nhập tên thẻ.</p>
+        </div>
+    </div>
+</div>
+
+<div id="modalAdd" class="modal">
+    <div class="modal-content">
+        <span class="close" onclick="closeModal('modalAdd')">&times;</span>
+        <h2>Đăng Bán Thẻ</h2>
+        <form id="formAdd">
+            <div class="form-group center-content">
+                <img id="addCardImage" src="https://via.placeholder.com/150x210?text=Card+Image" alt="Ảnh thẻ" class="card-image-preview">
+            </div>
+
+            <div class="form-group">
+                <label>Thẻ đã chọn:</label>
+                <p id="addMaTheDisplay" style="font-weight: bold; color: var(--primary-color);"></p>
+                <input type="hidden" id="addMaThe" required>
+            </div>
+            
+            <div class="form-group">
+                <label>Giá Bán ($):</label>
+                <input type="number" id="addGia" required min="0" placeholder="Nhập giá muốn bán" step="0.01">
+            </div>
+            
+            <div class="form-group">
+                <label>Tình Trạng:</label>
+                <select id="addTinhTrang">
+                    <option value="Mới">Mới (New)</option>
+                    <option value="Khá">Khá (Good)</option>
+                    <option value="Cũ">Cũ (Used)</option>
+                </select>
+            </div>
+
+            <div class="form-group">
+                <label>Mô Tả:</label>
+                <textarea id="addMoTa" rows="3" placeholder="Ví dụ: Thẻ foil, có chữ ký..."></textarea>
+            </div>
+            
+            <button type="submit" class="btn btn-success">Đăng Bán</button>
+        </form>
+    </div>
+</div>
+
+    <div id="modalEdit" class="modal">
+        <div class="modal-content">
+            <span class="close" onclick="closeModal('modalEdit')">&times;</span>
+            <h2>Cập Nhật Tin Rao</h2>
+            <form id="formEdit">
+                <input type="hidden" id="editmaRaoBan">
+                <div class="form-group">
+                    <label>Giá Bán Mới:</label>
+                    <input type="number" id="editGia" required min="0" placeholder="Nhập giá muốn bán" step="0.01">
+                </div>
+                <div class="form-group">
+                    <label>Tình Trạng:</label>
+                    <select id="editTinhTrang">
+                        <option value="Mới">Mới (New)</option>
+                        <option value="Khá">Khá (Good)</option>
+                        <option value="Cũ">Cũ (Used)</option>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Mô Tả:</label>
+                    <textarea id="editMoTa" rows="3"></textarea>
+                </div>
+                <button type="submit" class="btn btn-primary">Lưu Thay Đổi</button>
+            </form>
+        </div>
+    </div>
+
+    <script src="script.js"></script>
+</body>
+
+</html>

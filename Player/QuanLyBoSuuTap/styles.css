@@ -1,0 +1,70 @@
+/* collection.css - giao diện đơn giản, hiện đại */
+
+:root{
+--bg:#0f1724;
+--card:#0b1220;
+--accent:#06b6d4;
+--muted:#9aa4b2;
+--danger:#ef4444;
+--surface:#0b1220;
+--glass: rgba(255,255,255,0.03);
+--radius:10px;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%;margin:0;font-family:Inter,system-ui,Segoe UI,Roboto,"Helvetica Neue",Arial;}
+body{background: linear-gradient(180deg,#071022 0%, #061425 100%); color:#e6eef6;}
+
+/* Top bar */
+.topbar{
+height:64px; display:flex; align-items:center; justify-content:space-between;
+padding:0 20px; border-bottom:1px solid rgba(255,255,255,0.03);
+background: linear-gradient(90deg, rgba(6,11,20,0.6), rgba(6,11,20,0.3));
+position:sticky; top:0; z-index:5;
+}
+.topbar h1{margin:0;font-size:18px;letter-spacing:0.6px}
+.user-info{display:flex;gap:10px;align-items:center}
+.btn{background:var(--glass);border:1px solid rgba(255,255,255,0.05);padding:8px 12px;border-radius:8px;color:var(--muted);cursor:pointer}
+.btn.small{padding:6px 8px;font-size:13px}
+.btn.primary{background:linear-gradient(90deg,var(--accent),#60a5fa);color:#081023;border:none}
+.btn.danger{background:transparent;border:1px solid rgba(255,76,76,0.12);color:var(--danger)}
+
+.layout{display:grid;grid-template-columns:300px 1fr 360px;gap:18px;padding:18px;max-width:1200px;margin:18px auto}
+.panel{background:linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01)); padding:16px; border-radius:var(--radius); box-shadow: 0 6px 18px rgba(2,6,23,0.6)}
+.panel-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.left .collections-list{list-style:none;padding:0;margin:0;max-height:64vh;overflow:auto}
+.collections-list li{padding:8px;border-radius:8px;margin-bottom:8px;display:flex;justify-content:space-between;align-items:center;gap:8px;cursor:pointer}
+.collections-list li:hover{background:rgba(255,255,255,0.02)}
+.collections-list li.active{background:linear-gradient(90deg,var(--accent),#60a5fa);color:#021022}
+
+.select-full{width:100%;padding:8px;border-radius:8px;border:1px solid rgba(255,255,255,0.03);background:transparent;color:inherit}
+.control-row{margin-bottom:12px}
+
+.table{width:100%;border-collapse:collapse}
+.table thead th{ text-align:left;padding:10px 8px;color:var(--muted);font-size:13px;border-bottom:1px solid rgba(255,255,255,0.03)}
+.table tbody td{padding:10px 8px;border-bottom:1px solid rgba(255,255,255,0.02);vertical-align:middle}
+.thumb{width:48px;height:48px;object-fit:cover;border-radius:6px}
+
+/* Right: search result entries */
+.search-results{max-height:64vh;overflow:auto}
+.card-row{display:flex;gap:10px;align-items:center;padding:8px;border-radius:8px;margin-bottom:8px;background:rgba(255,255,255,0.02)}
+.card-row img{width:56px;height:56px;border-radius:6px;object-fit:cover}
+.card-info{flex:1}
+.card-actions{display:flex;gap:6px}
+
+/* modal */
+.modal{position:fixed;inset:0;background:rgba(2,6,23,0.6);display:flex;align-items:center;justify-content:center}
+.modal.hidden{display:none}
+.modal-box{background:#071022;padding:18px;border-radius:12px;width:520px;box-shadow:0 12px 40px rgba(3,7,18,0.8)}
+.modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:12px}
+.small-muted{font-size:13px;color:var(--muted)}
+
+/* responsive */
+@media (max-width:1000px){
+.layout{grid-template-columns:1fr; padding:12px}
+.right{order:3}
+.center{order:2}
+.left{order:1}
+}
+
+

@@ -1,0 +1,112 @@
+<!doctype html>
+<html lang="vi">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Quản lý Bộ sưu tập</title>
+  <link rel="stylesheet" href="styles.css" />
+</head>
+
+<body>
+  <header class="topbar">
+    <div class="user-info">
+      <span id="userLabel">Player</span>
+      <button id="btnLogout" class="btn small">Logout</button>
+    </div>
+  </header>
+
+  <main class="layout">
+    <!-- LEFT: Collections list + create -->
+    <aside class="panel left">
+      <div class="panel-header">
+        <h2>Tạo bộ sưu tập</h2>
+        <button id="btnNewCollection" class="btn">Tạo mới</button>
+      </div>
+
+      <div class="control-row">
+        <label>Chọn trò chơi</label>
+        <select id="gameFilterForCreate" class="select-full"></select>
+        <select id="gameSelect" class="select-full" style="display:none;"></select>
+      </div>
+      <h2>Danh sách Bộ sưu tập</h2>
+      <ul id="collectionsList" class="collections-list">
+        <!-- dynamic -->
+      </ul>
+    </aside>
+
+    <!-- CENTER: Detail of selected collection -->
+    <section class="panel center">
+      <div class="panel-header">
+        <div>
+          <h2 id="collectionTitle">Chọn bộ sưu tập</h2>
+          <small id="collectionMeta"></small>
+        </div>
+        <div class="actions">
+          <button id="btnRename" class="btn small">Đổi tên</button>
+          <button id="btnDelete" class="btn danger small">Xóa</button>
+        </div>
+      </div>
+
+      <div class="collection-controls">
+        <label>Tìm thẻ trong bộ sưu tập</label>
+        <input id="searchInCollection" placeholder="Tìm tên thẻ..." />
+      </div>
+
+      <table class="table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Ảnh</th>
+            <th>Tên thẻ</th>
+            <th>Số lượng</th>
+            <th>Hành động</th>
+          </tr>
+        </thead>
+        <tbody id="collectionCards">
+          <!-- dynamic -->
+        </tbody>
+      </table>
+    </section>
+
+    <!-- RIGHT: Search cards by game -> add to collection -->
+    <aside class="panel right">
+      <div class="panel-header">
+        <h2>Thêm thẻ</h2>
+      </div>
+
+      <div class="control-row">
+        <label>Tìm thẻ</label>
+        <input id="searchCardsInput" placeholder="Nhập tên thẻ..." />
+      </div>
+
+      <div class="control-row">
+        <button id="btnSearchCards" class="btn">Tìm</button>
+      </div>
+
+      <div id="searchResults" class="search-results">
+        <!-- list of found cards with Add button -->
+      </div>
+    </aside>
+
+
+  </main>
+
+  <!-- Modals -->
+
+  <div id="modal" class="modal hidden">
+    <div class="modal-box">
+      <h3 id="modalTitle"></h3>
+      <div id="modalBody"></div>
+      <div class="modal-actions">
+        <button id="modalCancel" class="btn">Hủy</button>
+        <button id="modalOk" class="btn primary">Xác nhận</button>
+      </div>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+
+</body>
+
+</html>

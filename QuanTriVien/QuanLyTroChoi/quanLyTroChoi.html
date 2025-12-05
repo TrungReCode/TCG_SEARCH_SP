@@ -1,0 +1,172 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Danh sách trò chơi</title>
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      margin: 20px;
+    }
+
+    h1 {
+      margin-bottom: 16px;
+    }
+
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      margin-top: 16px;
+    }
+
+    th,
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: left;
+    }
+
+    th {
+      background: #f2f2f2;
+    }
+
+    button {
+      margin-right: 6px;
+      padding: 4px 8px;
+      cursor: pointer;
+    }
+
+    .delete {
+      background: red;
+      border: none;
+      color: white;
+    }
+
+    .edit {
+      background: orange;
+      border: none;
+      color: white;
+    }
+
+    .add-form {
+      margin-bottom: 20px;
+    }
+
+    .add-form input {
+      padding: 6px;
+      margin-right: 8px;
+    }
+
+    .add-form button {
+      padding: 6px 12px;
+    }
+  </style>
+</head>
+
+<body>
+  <h1>Danh sách trò chơi</h1>
+
+  <div class="add-form">
+    <input type="text" id="tenTroChoi" placeholder="Tên trò chơi" />
+    <select id="maLoai">
+      <option value="" disabled selected>Chọn Mã loại</option>
+      <option value="1">1</option>
+      <option value="2">2</option>
+    </select>
+    <button onclick="addGame()">Thêm trò chơi</button>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Mã trò chơi</th>
+        <th>Tên trò chơi</th>
+        <th>Mã loại</th>
+        <th>Thao tác</th>
+      </tr>
+    </thead>
+    <tbody id="gameTableBody"></tbody>
+  </table>
+
+  <script>
+    const API_URL = "http://localhost:3000/games"; // đổi theo router bạn mount
+
+    async function loadGames() {
+      const res = await fetch(API_URL);
+      const games = await res.json();
+      const tbody = document.getElementById('gameTableBody');
+      tbody.innerHTML = '';
+
+      games.forEach(g => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${g.MaTroChoi}</td>
+          <td>${g.TenTroChoi}</td>
+          <td>${g.MaLoai}</td>
+          <td>
+            <button class="edit" onclick="editGame(${g.MaTroChoi}, '${g.TenTroChoi}', ${g.MaLoai})">Sửa</button>
+            <button class="delete" onclick="deleteGame(${g.MaTroChoi})">Xóa</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    async function addGame() {
+      const ten = document.getElementById('tenTroChoi').value.trim();
+      const maLoai = document.getElementById('maLoai').value.trim();
+      if (!ten || !maLoai) {
+        alert("Vui lòng nhập đủ thông tin");
+        return;
+      }
+      try {
+        await fetch(API_URL, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ TenTroChoi: ten, MaLoai: maLoai })
+        });
+        alert("Đã thêm trò chơi!");
+        document.getElementById('tenTroChoi').value = '';
+        document.getElementById('maLoai').value = '';
+        loadGames();
+      } catch (err) {
+        alert("Lỗi khi thêm: " + err);
+      }
+    }
+
+    async function deleteGame(id) {
+      if (!confirm("Bạn có chắc muốn xóa trò chơi này?")) return;
+      try {
+        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        alert("Đã xóa trò chơi!");
+        loadGames();
+      } catch (err) {
+        alert("Lỗi khi xóa: " + err);
+      }
+    }
+
+    async function editGame(id, oldName, oldType) {
+      const newName = prompt("Nhập tên trò chơi mới:", oldName);
+      if (newName === null) return; // bấm Cancel
+      const newType = prompt("Nhập mã loại mới:", oldType);
+      if (newType === null) return;
+
+      try {
+        await fetch(`${API_URL}/${id}`, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ TenTroChoi: newName, MaLoai: newType })
+        });
+        alert("Đã cập nhật trò chơi!");
+        loadGames();
+      } catch (err) {
+        alert("Lỗi khi sửa: " + err);
+      }
+    }
+
+    loadGames();
+  </script>
+</body>
+
+</html>

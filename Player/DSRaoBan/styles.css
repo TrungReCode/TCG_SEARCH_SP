@@ -1,0 +1,328 @@
+:root {
+    --primary-color: #4a90e2;
+    --danger-color: #e74c3c;
+    --success-color: #2ecc71;
+    --bg-color: #f4f7f6;
+    --card-bg: #ffffff;
+    --text-color: #333;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-color);
+    margin: 0;
+    padding: 20px;
+    color: var(--text-color);
+}
+
+.container {
+    max-width: 1200px;
+    margin: 0 auto;
+}
+
+header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #ddd;
+}
+
+h1 {
+    font-size: 1.8rem;
+    margin: 0;
+}
+
+/* --- GRID SYSTEM --- */
+.card-grid {
+    display: grid;
+    /* Thiết lập tối ưu cho Responsive: Tự động điền, tối thiểu 280px */
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 20px;
+}
+
+/* --- CARD ITEM STYLE --- */
+.card-item {
+    background: var(--card-bg);
+    border-radius: 10px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08);
+    overflow: hidden;
+    transition: transform 0.2s, box-shadow 0.2s;
+    display: flex;
+    flex-direction: column;
+}
+
+.card-item:hover {
+    transform: translateY(-5px);
+    box-shadow: 0 8px 15px rgba(0, 0, 0, 0.15);
+}
+
+.card-img {
+    width: 100%;
+    height: 180px;
+    object-fit: cover;
+    background-color: #ddd;
+}
+
+.card-body {
+    padding: 15px;
+    flex-grow: 1;
+}
+
+.card-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin: 0 0 10px;
+    color: var(--text-color);
+}
+
+.card-price {
+    color: var(--danger-color);
+    font-size: 1.1rem;
+    font-weight: bold;
+}
+
+.card-status {
+    display: inline-block;
+    padding: 3px 8px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+    margin-bottom: 10px;
+    font-weight: 600;
+}
+
+/* Style theo Tình Trạng */
+.status-mới { background-color: var(--success-color); color: white; }
+.status-khá { background-color: #f39c12; color: white; }
+.status-cũ { background-color: #95a5a6; color: white; }
+
+
+.card-actions {
+    padding: 15px;
+    border-top: 1px solid #eee;
+    display: flex;
+    justify-content: space-between;
+}
+
+/* --- BUTTONS --- */
+.btn {
+    padding: 8px 15px;
+    border: none;
+    border-radius: 5px;
+    cursor: pointer;
+    font-weight: bold;
+    color: white;
+    transition: opacity 0.2s;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+.btn:hover { opacity: 0.9; }
+
+.btn-primary { background-color: var(--primary-color); }
+.btn-danger { background-color: var(--danger-color); }
+.btn-success { background-color: var(--success-color); }
+
+.btn-small {
+    padding: 5px 10px;
+    font-size: 0.8em;
+}
+
+/* --- MODAL --- */
+.modal {
+    display: none; 
+    position: fixed; 
+    z-index: 100; 
+    left: 0; top: 0;
+    width: 100%; height: 100%; 
+    background-color: rgba(0,0,0,0.5); 
+    overflow-y: auto; /* Cho phép cuộn trên mobile */
+}
+
+.modal-content {
+    background-color: #fff;
+    margin: 10% auto; 
+    padding: 20px;
+    border-radius: 8px;
+    width: 400px;
+    max-width: 90%; /* Giới hạn để không bị tràn trên màn hình nhỏ */
+    position: relative;
+    box-shadow: 0 5px 25px rgba(0,0,0,0.4);
+}
+
+.close {
+    position: absolute;
+    right: 15px; top: 10px;
+    font-size: 24px;
+    cursor: pointer;
+    color: #999;
+}
+.close:hover {
+    color: #333;
+}
+
+/* --- FORM & INPUTS --- */
+.form-group { margin-bottom: 15px; }
+.form-group label { display: block; margin-bottom: 5px; font-weight: bold; font-size: 0.95rem;}
+.form-group input, .form-group textarea, .form-group select {
+    width: 100%;
+    padding: 10px;
+    box-sizing: border-box;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    font-size: 1rem;
+}
+.form-group input[type="number"] {
+    appearance: textfield; /* Fix cho Firefox */
+    -moz-appearance: textfield;
+}
+
+/* --- SEARCH MODAL STYLES --- */
+.search-results-box {
+    max-height: 300px;
+    overflow-y: auto;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    padding: 10px;
+    margin-top: 10px;
+}
+
+.search-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+}
+
+.search-item:last-child {
+    border-bottom: none;
+}
+
+.search-item-info {
+    display: flex;
+    align-items: center;
+    flex-grow: 1;
+}
+
+.search-item img {
+    width: 50px;
+    height: 70px;
+    object-fit: cover;
+    border-radius: 3px;
+    margin-right: 10px;
+    border: 1px solid #ccc;
+}
+
+/* --- ADD MODAL PREVIEW --- */
+.center-content {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+.card-image-preview {
+    width: 150px;
+    height: 210px;
+    object-fit: cover;
+    border-radius: 8px;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.2);
+    border: 3px solid var(--primary-color);
+}
+
+/* --- LOADING TEXT --- */
+.loading-text {
+    text-align: center;
+    color: #777;
+    padding: 20px;
+}
+
+/* ======================================================= */
+/* MEDIA QUERIES (RESPONSIVE DESIGN)                       */
+/* ======================================================= */
+
+/* --- 1. MÀN HÌNH NHỎ (Điện thoại: Dưới 600px) --- */
+@media (max-width: 600px) {
+    
+    /* Điều chỉnh Body/Container */
+    body {
+        padding: 10px; /* Giảm padding tổng thể */
+    }
+    
+    h1 {
+        font-size: 1.5rem;
+    }
+
+    /* Điều chỉnh Header (chuyển sang bố cục dọc) */
+    header {
+        flex-direction: column;
+        align-items: stretch; /* Kéo giãn các item theo chiều ngang */
+        gap: 10px;
+    }
+    header .btn {
+        width: 100%;
+        justify-content: center;
+    }
+    
+    /* Điều chỉnh Card Grid */
+    .card-grid {
+        grid-template-columns: 1fr; /* Chỉ 1 cột trên điện thoại */
+        gap: 15px; 
+    }
+
+    /* Điều chỉnh Modal */
+    .modal-content {
+        width: 95%; 
+        margin: 5% auto; /* Đẩy lên trên một chút */
+        padding: 15px; 
+    }
+    
+    /* Điều chỉnh các nút hành động trong Card List */
+    .card-actions {
+        flex-direction: column;
+        gap: 8px;
+    }
+    .card-actions .btn {
+        width: 100%;
+        text-align: center;
+        justify-content: center;
+    }
+    
+    /* Điều chỉnh Search Item */
+    .search-item {
+        flex-direction: column;
+        align-items: stretch;
+        padding: 10px;
+        border: 1px solid #eee;
+        border-radius: 5px;
+        margin-bottom: 5px;
+        box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    }
+    
+    .search-item-info {
+        margin-bottom: 10px;
+    }
+    
+    .search-results-box {
+        max-height: 250px; /* Giảm chiều cao trên mobile */
+    }
+
+    .search-item .btn-small {
+        width: 100%;
+        margin-top: 5px;
+        justify-content: center;
+    }
+}
+
+/* --- 2. MÀN HÌNH TRUNG BÌNH (Tablets: 601px đến 900px) --- */
+@media (min-width: 601px) and (max-width: 900px) {
+    body {
+        padding: 15px;
+    }
+    .modal-content {
+        width: 70%; 
+        margin-top: 5%;
+    }
+    /* Grid sẽ tự động điều chỉnh 2-3 cột nhờ minmax(280px, 1fr) */
+}

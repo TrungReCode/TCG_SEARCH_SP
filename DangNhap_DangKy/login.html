@@ -1,0 +1,69 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Đăng nhập</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="form-container">
+    <h2>Đăng nhập</h2>
+    <form id="loginForm">
+      <input type="text" name="username" placeholder="Tên người dùng" required>
+      <input type="password" name="password" placeholder="Mật khẩu" required autocomplete="off">
+      <button type="submit">Đăng nhập</button>
+    </form>
+    <div class="error-message" id="errorMessage"></div>
+    <p>Chưa có tài khoản? <a href="register.html">Đăng ký</a></p>
+  </div>
+
+  <script>
+    document.getElementById("loginForm").addEventListener("submit", async function (e) {
+      e.preventDefault();
+
+      const username = this.username.value.trim();
+      const password = this.password.value;
+
+      if (!username || !password) {
+        document.getElementById("errorMessage").textContent = "Vui lòng nhập đầy đủ thông tin.";
+        return;
+      }
+
+      try {
+        const res = await fetch("http://localhost:3000/login", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ username, password })
+        });
+
+        if (!res.ok) {
+          throw new Error("Sai tên người dùng hoặc mật khẩu");
+        }
+
+        const data = await res.json();
+
+        localStorage.setItem("username", data.username);
+        localStorage.setItem("vaitro", Number(data.vaitro));  // 1 = admin, 0 = người chơi
+        localStorage.setItem("maNguoiDung", data.maNguoiDung);
+        
+        alert("Đăng nhập thành công! Xin chào " + data.username);
+
+        if (Number(data.vaitro) === 1) {
+          window.location.href = "/QuanTriVien/admin.html";
+        } else {
+          window.location.href = "/Player/player.html";
+        }
+
+
+      } catch (err) {
+        console.error("Lỗi đăng nhập:", err);
+        document.getElementById("errorMessage").textContent = err.message;
+      }
+    });
+  </script>
+
+</body>
+
+</html>

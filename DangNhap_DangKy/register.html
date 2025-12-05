@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="vi">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Đăng ký</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+
+<body>
+  <div class="form-container">
+    <h2>Đăng ký</h2>
+    <form id="registerForm">
+      <input type="text" name="username" placeholder="Tên người dùng" required>
+      <input type="email" name="email" placeholder="Email" required>
+      <input type="password" name="password" placeholder="Mật khẩu" required autocomplete="off">
+      <button type="submit">Đăng ký</button>
+    </form>
+    <div class="error-message" id="errorMessage"></div>
+    <p>Đã có tài khoản? <a href="login.html">Đăng nhập</a></p>
+  </div>
+
+  <script>
+    document.getElementById("registerForm").addEventListener("submit", function (e) {
+      e.preventDefault();
+
+      const username = this.username.value.trim();
+      const email = this.email.value.trim();
+      const password = this.password.value;
+
+      fetch("http://localhost:3000/register", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username, email, password })
+      })
+        .then(async res => {
+          if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || "Đăng ký thất bại");
+          }
+          return res.text();
+        })
+        .then(data => {
+          alert(data);
+          window.location.href = "login.html";
+        })
+        .catch(err => {
+          document.getElementById("errorMessage").textContent = err.message;
+        });
+    });
+  </script>
+</body>
+
+</html>
