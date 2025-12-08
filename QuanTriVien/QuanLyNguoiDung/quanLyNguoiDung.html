@@ -94,6 +94,7 @@
     async function loadUsers() {
       <!-- Lấy giá trị lọc từ dropdown -->
       const roleFilter = document.getElementById('roleFilter').value;
+      const currentUserId = localStorage.getItem('maNguoiDung');
 
       const res = await fetch(`${API_URL}`);
       const users = await res.json();
@@ -101,6 +102,11 @@
       tbody.innerHTML = '';
 
       users.forEach(u => {
+        // Bỏ qua tài khoản đang đăng nhập
+        if (u.MaNguoiDung == currentUserId) {
+          return;
+        }
+
         if (roleFilter !== '' && u.VaiTro != roleFilter) {
           return;
         }
