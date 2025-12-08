@@ -120,8 +120,6 @@ router.get("/search", async (req, res) => {
     }
 });
 
-// --------------------------------------------------------------------------------------
-
 // ================== DANH SÁCH THẺ ==================
 router.get("/", async (req, res) => {
     try {
@@ -148,9 +146,7 @@ router.get("/", async (req, res) => {
     }
 });
 
-// --------------------------------------------------------------------------------------
-
-// ================== CHI TIẾT THẺ (Sửa lỗi logic 12h) ==================
+// ================== CHI TIẾT THẺ ==================
 router.get("/detail/:MaThe", async (req, res) => {
     const id = Number.parseInt(req.params.MaThe);
     if (isNaN(id)) return res.status(400).json({ error: "MaThe không hợp lệ" });
@@ -239,8 +235,6 @@ router.get("/detail/:MaThe", async (req, res) => {
     }
 });
 
-// --------------------------------------------------------------------------------------
-
 // ================== THÊM THẺ (Thêm OUTPUT để trả về ID) ==================
 router.post("/", async (req, res) => {
     let { TenThe, MaTroChoi, HinhAnh, MoTa, ThuocTinh, Gia } = req.body;
@@ -301,8 +295,6 @@ router.post("/", async (req, res) => {
         res.status(500).json({ error: "Lỗi server thêm thẻ" });
     }
 });
-
-// --------------------------------------------------------------------------------------
 
 // ================== XÓA THẺ (Đã sử dụng Transaction Tốt) ==================
 router.delete("/:MaThe", async (req, res) => {

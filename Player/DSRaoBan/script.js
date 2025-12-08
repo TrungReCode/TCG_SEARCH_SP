@@ -42,7 +42,7 @@ async function loadTroChoiList() {
 }
 
 // =====================================================================
-// 2. TÌM KIẾM THẺ GỐC ĐỂ THÊM (Cập nhật dùng MaTroChoi)
+// 2. TÌM KIẾM THẺ GỐC ĐỂ THÊM
 // =====================================================================
 async function searchCards(keyword) {
     const searchResults = document.getElementById("searchResults");
@@ -61,7 +61,6 @@ async function searchCards(keyword) {
     searchResults.innerHTML = '<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Đang tìm...</p>';
 
     try {
-        // TRUYỀN maTroChoi VÀO API SEARCH
         const response = await fetch(`${CARDS_URL}/search?q=${encodeURIComponent(keyword)}&MaTroChoi=${maTroChoi}`); 
         const result = await response.json();
 
@@ -76,18 +75,29 @@ async function searchCards(keyword) {
 
         result.forEach(card => {
             const maThe = card.MaThe;
-            const tenThe = card.TenThe;
-            const hinhAnh = card.HinhAnh || 'https://via.placeholder.com/50x70?text=No+Img';
+            // Xử lý Escape dấu nháy đơn (') để tránh lỗi cú pháp HTML onclick
+            const rawTenThe = card.TenThe || "";
+            const safeTenThe = rawTenThe.replace(/'/g, "\\'"); 
             
+            const hinhAnh = card.HinhAnh || 'https://via.placeholder.com/50x70?text=No+Img';
+            // Lấy giá gợi ý từ DB
+            const giaGoiY = parseFloat(card.Gia) || 0;
+
             const item = document.createElement('div');
             item.className = 'search-item';
+
             item.innerHTML = `
                 <div class="search-item-info">
-                    <img src="${hinhAnh}" alt="${tenThe}">
-                    <span>${tenThe} ${maThe ? `(ID: ${maThe})` : ''}</span>
+                    <img src="${hinhAnh}" alt="${safeTenThe}">
+                    <div>
+                        <span style="font-weight:bold;">${rawTenThe}</span> 
+                        ${maThe ? `<small style="color:#666;">(ID: ${maThe})</small>` : ''}
+                        <br/>
+                        <small style="color: #28a745;">Gợi ý: $${giaGoiY.toFixed(2)}</small>
+                    </div>
                 </div>
                 <button class="btn btn-success btn-small" 
-                        onclick="selectCardForSale('${maThe}', '${tenThe}', '${hinhAnh}')">
+                        onclick="selectCardForSale('${maThe}', '${safeTenThe}', '${hinhAnh}', ${giaGoiY})">
                     <i class="fas fa-plus"></i> Rao Bán
                 </button>
             `;
@@ -100,21 +110,29 @@ async function searchCards(keyword) {
 }
 
 // =====================================================================
-// 3. XỬ LÝ THÊM MỚI (Cập nhật: truyền thêm HinhAnh)
+// 3. XỬ LÝ THÊM MỚI
 // =====================================================================
 
 // Bước 1: Chọn thẻ từ kết quả tìm kiếm, điền vào form Add
-function selectCardForSale(maThe, tenThe, hinhAnh) {
+// Thêm tham số 'gia' vào cuối
+async function selectCardForSale(maThe, tenThe, hinhAnh, gia) {
     closeModal('modalSearch'); 
     openAddModal();
+
+    const giaInput = document.getElementById("addGia");
     
+    // BƯỚC 1: Hiển thị ngay giá cũ lấy từ danh sách search (Tăng tốc độ cảm nhận)
+    const oldPrice = parseFloat(gia) || 0;
+    giaInput.value = oldPrice.toFixed(2);
+
     document.getElementById("addMaTheDisplay").textContent = tenThe; 
     document.getElementById("addMaThe").value = maThe; 
-    
-    // HIỂN THỊ HÌNH ẢNH TRONG MODAL ADD
     document.getElementById("addCardImage").src = hinhAnh; 
     
-    document.getElementById("addGia").focus();
+    giaInput.focus();
+    giaInput.select();
+
+    
 }
 
 document.getElementById("salesList").addEventListener("click", function(e) {
