@@ -1,0 +1,195 @@
+const express = require('express');
+const router = express.Router();
+const { sql, connectDB } = require('../db');
+
+// =========================================================================
+// 1. ĐĂNG TIN CẦN MUA (POST /add)
+// =========================================================================
+router.post("/add", async (req, res) => {
+    const { MaNguoiDung, MaThe, TieuDe, MoTa, HinhAnh, GiaMongMuon } = req.body;
+
+    if (!MaNguoiDung || !TieuDe) {
+        return res.status(400).json({ error: "Thiếu thông tin bắt buộc (Người dùng, Tiêu đề)" });
+    }
+
+    try {
+        const pool = await connectDB();
+        
+        // Xử lý MaThe: Nếu gửi lên là 0 hoặc null thì lưu vào DB là NULL
+        const finalMaThe = (MaThe && MaThe > 0) ? MaThe : null;
+        
+        // Xử lý HinhAnh: Nếu không có ảnh user up, để NULL (SQL khi SELECT sẽ tự lấy ảnh thẻ gốc)
+        const finalHinhAnh = HinhAnh && HinhAnh.trim() !== "" ? HinhAnh : null;
+
+        const result = await pool.request()
+            .input("MaNguoiDung", sql.Int, MaNguoiDung)
+            .input("MaThe", sql.Int, finalMaThe)
+            .input("TieuDe", sql.NVarChar, TieuDe)
+            .input("MoTa", sql.NVarChar, MoTa || "")
+            .input("HinhAnh", sql.NVarChar, finalHinhAnh)
+            .input("GiaMongMuon", sql.Decimal(10, 2), GiaMongMuon || 0)
+            .query(`
+                INSERT INTO TheCanMua (MaNguoiDung, MaThe, TieuDe, MoTa, HinhAnh, GiaMongMuon)
+                VALUES (@MaNguoiDung, @MaThe, @TieuDe, @MoTa, @HinhAnh, @GiaMongMuon)
+            `);
+
+        res.json({ success: true, message: "Đăng tin tìm mua thành công!" });
+
+    } catch (err) {
+        console.error("Lỗi đăng tin mua:", err);
+        res.status(500).json({ error: "Lỗi server khi đăng tin." });
+    }
+});
+
+// =========================================================================
+// 2. LẤY DANH SÁCH TIN CẦN MUA (GET /list) - CHO TRANG NEWS FEED
+// =========================================================================
+router.get("/list", async (req, res) => {
+    try {
+        const pool = await connectDB();
+        // Logic COALESCE: Ưu tiên ảnh User Up -> Nếu ko có thì lấy ảnh Thẻ gốc -> Nếu ko có thì Null
+        const result = await pool.request().query(`
+            SELECT 
+                cm.MaCanMua, 
+                cm.TieuDe, 
+                cm.MoTa,
+                cm.GiaMongMuon, 
+                cm.NgayDang,
+                cm.MaThe,
+                nd.TenNguoiDung,
+                nd.MaNguoiDung,
+                tb.TenThe AS TenTheGoc,
+                COALESCE(cm.HinhAnh, tb.HinhAnh) AS HinhAnhHienThi
+            FROM TheCanMua cm
+            JOIN NguoiDung nd ON cm.MaNguoiDung = nd.MaNguoiDung
+            LEFT JOIN TheBai tb ON cm.MaThe = tb.MaThe
+            WHERE cm.DaKetThuc = 0 
+            ORDER BY cm.NgayDang DESC
+        `);
+
+        res.json(result.recordset);
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi lấy danh sách cần mua" });
+    }
+});
+
+// =========================================================================
+// 3. SỬA TIN (PUT /update/:id)
+// =========================================================================
+router.put("/update/:id", async (req, res) => {
+    const id = req.params.id;
+    const { TieuDe, MoTa, GiaMongMuon, HinhAnh, DaKetThuc } = req.body;
+
+    try {
+        const pool = await connectDB();
+        
+        // Kiểm tra xem tin có tồn tại không
+        const check = await pool.request()
+            .input("MaCanMua", sql.Int, id)
+            .query("SELECT MaNguoiDung FROM TheCanMua WHERE MaCanMua = @MaCanMua");
+            
+        if (!check.recordset.length) return res.status(404).json({ error: "Tin không tồn tại" });
+
+        // Thực hiện update
+        await pool.request()
+            .input("MaCanMua", sql.Int, id)
+            .input("TieuDe", sql.NVarChar, TieuDe)
+            .input("MoTa", sql.NVarChar, MoTa)
+            .input("GiaMongMuon", sql.Decimal(10, 2), GiaMongMuon)
+            .input("HinhAnh", sql.NVarChar, HinhAnh || null)
+            .input("DaKetThuc", sql.Bit, DaKetThuc !== undefined ? DaKetThuc : 0) // Cho phép đóng/mở tin
+            .query(`
+                UPDATE TheCanMua 
+                SET TieuDe=@TieuDe, MoTa=@MoTa, GiaMongMuon=@GiaMongMuon, 
+                    HinhAnh=@HinhAnh, DaKetThuc=@DaKetThuc
+                WHERE MaCanMua=@MaCanMua
+            `);
+
+        res.json({ success: true, message: "Cập nhật thành công" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi cập nhật tin" });
+    }
+});
+
+// =========================================================================
+// 4. XÓA TIN (DELETE /:id)
+// =========================================================================
+router.delete("/:id", async (req, res) => {
+    try {
+        const pool = await connectDB();
+        const result = await pool.request()
+            .input("MaCanMua", sql.Int, req.params.id)
+            .query("DELETE FROM TheCanMua WHERE MaCanMua = @MaCanMua");
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ error: "Tin không tồn tại hoặc đã bị xóa" });
+        }
+        res.json({ success: true, message: "Đã xóa tin thành công" });
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi server khi xóa" });
+    }
+});
+
+// =========================================================================
+// 5. CHỨC NĂNG MATCHING (KHỚP LỆNH)
+// Tìm những người đang BÁN thẻ mà User này đang CẦN MUA
+// =========================================================================
+router.get("/match/:MaNguoiDung", async (req, res) => {
+    const currentUserId = req.params.MaNguoiDung;
+
+    try {
+        const pool = await connectDB();
+        
+        // Query logic:
+        // Lấy Tin Mua của User -> JOIN với Tin Bán của người khác qua MaThe
+        const result = await pool.request()
+            .input("CurrentUserId", sql.Int, currentUserId)
+            .query(`
+                SELECT 
+                    -- Thông tin thẻ cần mua (Của User hiện tại)
+                    cm.MaCanMua,
+                    cm.TieuDe AS TieuDeCanMua,
+                    cm.GiaMongMuon,
+                    
+                    -- Thông tin thẻ tìm thấy (Đang được bán bởi người khác)
+                    rb.MaRaoBan,
+                    rb.Gia AS GiaNguoiBan,
+                    rb.TinhTrang,
+                    rb.MaNguoiDung AS IdNguoiBan,
+                    nd_ban.TenNguoiDung AS TenNguoiBan,
+                    
+                    -- Thông tin chung về thẻ
+                    tb.TenThe,
+                    tb.HinhAnh AS AnhTheGoc,
+                    tb.MaThe
+
+                FROM TheCanMua cm
+                -- Chỉ match những tin có chỉ định MaThe cụ thể
+                INNER JOIN TheRaoBan rb ON cm.MaThe = rb.MaThe 
+                INNER JOIN TheBai tb ON cm.MaThe = tb.MaThe
+                INNER JOIN NguoiDung nd_ban ON rb.MaNguoiDung = nd_ban.MaNguoiDung
+                
+                WHERE 
+                    cm.MaNguoiDung = @CurrentUserId  -- Của tôi
+                    AND cm.DaKetThuc = 0             -- Tôi vẫn đang tìm
+                    AND rb.MaNguoiDung != @CurrentUserId -- Không tự mua của chính mình
+                
+                ORDER BY rb.NgayDang DESC
+            `);
+
+        res.json({
+            success: true,
+            matches: result.recordset,
+            count: result.recordset.length
+        });
+
+    } catch (err) {
+        console.error("Lỗi Matching:", err);
+        res.status(500).json({ error: "Lỗi server khi tìm kiếm khớp lệnh" });
+    }
+});
+
+module.exports = router;

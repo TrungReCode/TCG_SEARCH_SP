@@ -39,6 +39,10 @@ app.use('/tintuc', tintucRouter);
 const usersRouter = require('./routes/users');
 app.use('/users', usersRouter);
 
+//tim mua
+const timmuaRouter = require('./routes/timmua');
+app.use('/timmua', timmuaRouter);
+
 const loginRouter = require('./routes/login');
 const registerRouter = require('./routes/register');
 
