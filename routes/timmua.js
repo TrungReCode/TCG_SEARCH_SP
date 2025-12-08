@@ -86,41 +86,55 @@ router.get("/list", async (req, res) => {
 });
 
 // =========================================================================
-// 3. SỬA TIN (PUT /update/:id)
+// 3. SỬA TIN (PUT /update/:id) - Hỗ trợ cả User và Admin
 // =========================================================================
 router.put("/update/:id", async (req, res) => {
     const id = req.params.id;
-    const { TieuDe, MoTa, GiaMongMuon, HinhAnh, DaKetThuc } = req.body;
+    // Lấy MaNguoiDung từ body (Nếu là Admin thì frontend sẽ không gửi kèm field này)
+    const { MaNguoiDung, TieuDe, MoTa, GiaMongMuon, HinhAnh, DaKetThuc } = req.body;
 
     try {
         const pool = await connectDB();
-        
-        // Kiểm tra xem tin có tồn tại không
-        const check = await pool.request()
-            .input("MaCanMua", sql.Int, id)
-            .query("SELECT MaNguoiDung FROM TheCanMua WHERE MaCanMua = @MaCanMua");
-            
-        if (!check.recordset.length) return res.status(404).json({ error: "Tin không tồn tại" });
-
-        // Thực hiện update
-        await pool.request()
+        const request = pool.request()
             .input("MaCanMua", sql.Int, id)
             .input("TieuDe", sql.NVarChar, TieuDe)
             .input("MoTa", sql.NVarChar, MoTa)
             .input("GiaMongMuon", sql.Decimal(10, 2), GiaMongMuon)
             .input("HinhAnh", sql.NVarChar, HinhAnh || null)
-            .input("DaKetThuc", sql.Bit, DaKetThuc !== undefined ? DaKetThuc : 0) // Cho phép đóng/mở tin
-            .query(`
-                UPDATE TheCanMua 
-                SET TieuDe=@TieuDe, MoTa=@MoTa, GiaMongMuon=@GiaMongMuon, 
-                    HinhAnh=@HinhAnh, DaKetThuc=@DaKetThuc
-                WHERE MaCanMua=@MaCanMua
-            `);
+            // Nếu DaKetThuc không gửi lên (undefined), mặc định là 0 (đang tìm)
+            .input("DaKetThuc", sql.Bit, DaKetThuc !== undefined ? DaKetThuc : 0);
+
+        // Câu lệnh SQL cơ bản
+        let sqlQuery = `
+            UPDATE TheCanMua 
+            SET TieuDe=@TieuDe, MoTa=@MoTa, GiaMongMuon=@GiaMongMuon, 
+                HinhAnh=@HinhAnh, DaKetThuc=@DaKetThuc
+            WHERE MaCanMua=@MaCanMua
+        `;
+
+        // --- LOGIC PHÂN QUYỀN ---
+        // 1. Nếu Request có MaNguoiDung -> User thường đang sửa -> Check quyền sở hữu
+        if (MaNguoiDung) {
+            request.input("MaNguoiDung", sql.Int, MaNguoiDung);
+            sqlQuery += ` AND MaNguoiDung = @MaNguoiDung`;
+        }
+        // 2. Nếu KHÔNG có MaNguoiDung -> Admin dashboard đang sửa -> Bỏ qua check quyền
+
+        const result = await request.query(sqlQuery);
+
+        // Kiểm tra xem có dòng nào được update không
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                error: "Không tìm thấy tin hoặc bạn không có quyền sửa (sai chủ sở hữu)!" 
+            });
+        }
 
         res.json({ success: true, message: "Cập nhật thành công" });
+
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi cập nhật tin" });
+        console.error("Lỗi cập nhật tin mua:", err);
+        res.status(500).json({ error: "Lỗi server khi cập nhật tin" });
     }
 });
 

@@ -39,6 +39,7 @@
     .btn-users { background: #2ecc71; }
     .btn-games { background: #9b59b6; }
     .btn-cards { background: #f39c12; }
+    .btn-sale { background: #1dc09f; }
     .btn:hover { opacity: 0.9; }
   </style>
 </head>
@@ -50,6 +51,7 @@
     <button class="btn btn-users" id="btnUsers">Quản lý Người dùng</button>
     <button class="btn btn-games" id="btnGames">Quản lý Trò chơi</button>
     <button class="btn btn-cards" id="btnCards">Quản lý Thẻ bài</button>
+    <button class="btn btn-sale" id="btnSale">Quản lý Mua bán thẻ</button>
   </div>
 
   <script>
@@ -72,6 +74,10 @@
 
     document.getElementById("btnCards").addEventListener("click", () => {
       window.location.href = "QuanLyTheBai/quanLyTheBai.html";
+    });
+
+    document.getElementById("btnSale").addEventListener("click", () => {
+      window.location.href = "QuanLyMuaBanThe/quanLyMuaBanThe.html";
     });
   </script>
 </body>

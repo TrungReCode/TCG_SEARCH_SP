@@ -116,40 +116,54 @@ router.post("/add-custom", async (req, res) => {
 
 
 // ====================================================
-// 🔹 4. CẬP NHẬT THÔNG TIN RAO BÁN
+// 🔹 4. CẬP NHẬT THÔNG TIN RAO BÁN (Hỗ trợ cả User & Admin)
 // ====================================================
 router.put("/update/:maRaoBan", async (req, res) => {
     try {
+        // MaNguoiDung là tùy chọn (Optional). 
+        // - Nếu User tự sửa: Frontend sẽ gửi MaNguoiDung lên.
+        // - Nếu Admin sửa: Frontend (admin.js) sẽ KHÔNG gửi MaNguoiDung lên.
         const { MaNguoiDung, Gia, MoTa, TinhTrang } = req.body;
         const MaRaoBan = req.params.maRaoBan;
 
-        if (!MaNguoiDung)
-            return res.status(401).json({ success: false, error: "Chưa xác thực người dùng!" });
-
         const pool = await connectDB();
-
-        const result = await pool.request()
+        const request = pool.request()
             .input("MaRaoBan", sql.Int, MaRaoBan)
-            .input("MaNguoiDung", sql.Int, MaNguoiDung)
             .input("Gia", sql.Decimal(10, 2), Gia)
             .input("MoTa", sql.NVarChar, MoTa || "")
-            .input("TinhTrang", sql.NVarChar, TinhTrang || "Mới")
-            .query(`
-                UPDATE TheRaoBan
-                SET Gia = @Gia, MoTa = @MoTa, TinhTrang = @TinhTrang
-                WHERE MaRaoBan = @MaRaoBan AND MaNguoiDung = @MaNguoiDung
-            `);
+            .input("TinhTrang", sql.NVarChar, TinhTrang || "Mới");
 
-        if (result.rowsAffected[0] === 0)
-            return res.status(404).json({ success: false, message: "Không tìm thấy bài đăng hoặc bạn không có quyền sửa!" });
+        // Câu lệnh SQL cơ bản
+        let sqlQuery = `
+            UPDATE TheRaoBan
+            SET Gia = @Gia, MoTa = @MoTa, TinhTrang = @TinhTrang
+            WHERE MaRaoBan = @MaRaoBan
+        `;
 
-        res.json({ success: true, message: "Đã cập nhật thông tin rao bán!" });
+        // LOGIC PHÂN QUYỀN THÔNG MINH:
+        // Nếu request có gửi kèm MaNguoiDung -> Đây là User thường -> Bắt buộc check quyền sở hữu
+        if (MaNguoiDung) {
+            request.input("MaNguoiDung", sql.Int, MaNguoiDung);
+            sqlQuery += ` AND MaNguoiDung = @MaNguoiDung`;
+        }
+        // Nếu KHÔNG gửi MaNguoiDung -> Hiểu ngầm là Admin (hoặc logic Admin dashboard) -> Bỏ qua check sở hữu
+
+        const result = await request.query(sqlQuery);
+
+        if (result.rowsAffected[0] === 0) {
+            return res.status(404).json({ 
+                success: false, 
+                message: "Không tìm thấy bài đăng hoặc bạn không có quyền sửa (sai chủ sở hữu)!" 
+            });
+        }
+
+        res.json({ success: true, message: "Đã cập nhật thông tin thành công!" });
 
     } catch (err) {
+        console.error("Lỗi update rao bán:", err);
         res.status(500).json({ success: false, error: err.message });
     }
 });
-
 
 // ====================================================
 // 🔹 5. XÓA THẺ RAO BÁN

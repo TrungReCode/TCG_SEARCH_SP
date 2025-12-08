@@ -133,4 +133,80 @@ router.post("/create-contact", async (req, res) => {
     }
 });
 
+// routes/orders.js
+
+// =========================================================================
+// 3. ADMIN: LẤY DANH SÁCH GIAO DỊCH (GET /admin/list)
+// =========================================================================
+router.get("/admin/list", async (req, res) => {
+    try {
+        const pool = await connectDB();
+        
+        // Query này sẽ lấy chi tiết:
+        // - Ai là người gửi yêu cầu (Người Bán)
+        // - Tin cần mua là gì
+        // - Ai là chủ tin cần mua (Người Mua)
+        const query = `
+            SELECT 
+                dh.MaDonHang,
+                dh.TrangThai,
+                dh.NgayTao,
+                dh.LoaiGiaoDich, -- 'BAN' (Liên hệ bán) hoặc 'MUA' (Mua thẻ rao)
+                
+                -- Người thực hiện lệnh (Ví dụ: Người bấm nút Liên hệ bán)
+                NguoiLienHe.TenNguoiDung AS TenNguoiLienHe,
+                NguoiLienHe.Email AS EmailNguoiLienHe,
+
+                -- Thông tin Tin Cần Mua (Nếu là giao dịch BÁN)
+                cm.TieuDe AS TieuDeTinMua,
+                cm.GiaMongMuon,
+                NguoiCanMua.TenNguoiDung AS TenNguoiCanMua,
+                
+                -- Thông tin Thẻ Rao Bán (Nếu là giao dịch MUA)
+                rb.MaRaoBan,
+                rb.Gia AS GiaRaoBan,
+                NguoiBan.TenNguoiDung AS TenChuTheRaoBan
+
+            FROM DonHang dh
+            -- Join cho trường hợp Liên Hệ Bán (LoaiGiaoDich = 'BAN')
+            LEFT JOIN NguoiDung NguoiLienHe ON dh.MaNguoiTao = NguoiLienHe.MaNguoiDung
+            LEFT JOIN TheCanMua cm ON dh.MaCanMua = cm.MaCanMua
+            LEFT JOIN NguoiDung NguoiCanMua ON cm.MaNguoiDung = NguoiCanMua.MaNguoiDung
+            
+            -- Join cho trường hợp Mua Thẻ (LoaiGiaoDich = 'MUA')
+            LEFT JOIN TheRaoBan rb ON dh.MaRaoBan = rb.MaRaoBan
+            LEFT JOIN NguoiDung NguoiBan ON rb.MaNguoiDung = NguoiBan.MaNguoiDung
+
+            ORDER BY dh.NgayTao DESC
+        `;
+
+        const result = await pool.request().query(query);
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi lấy danh sách đơn hàng" });
+    }
+});
+
+// =========================================================================
+// 4. ADMIN: CẬP NHẬT TRẠNG THÁI (PUT /update-status/:id)
+// =========================================================================
+router.put("/update-status/:id", async (req, res) => {
+    const { TrangThai } = req.body; // 'DangGiao', 'HoanTat', 'Huy'
+    const id = req.params.id;
+
+    try {
+        const pool = await connectDB();
+        await pool.request()
+            .input("MaDonHang", sql.Int, id)
+            .input("TrangThai", sql.NVarChar, TrangThai)
+            .query("UPDATE DonHang SET TrangThai = @TrangThai WHERE MaDonHang = @MaDonHang");
+
+        res.json({ success: true, message: "Đã cập nhật trạng thái đơn hàng" });
+    } catch (err) {
+        res.status(500).json({ error: "Lỗi cập nhật" });
+    }
+});
+
 module.exports = router;
