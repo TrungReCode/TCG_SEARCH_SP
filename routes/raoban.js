@@ -200,45 +200,49 @@ router.get("/search-combined", async (req, res) => {
             SELECT 
                 RB.MaRaoBan, RB.Gia AS GiaBan, RB.TinhTrang, RB.MoTa AS MoTaRaoBan, RB.NgayDang,
                 TB.MaThe, TB.TenThe, TB.HinhAnh, TB.Gia AS GiaGoc,
-                ND.MaNguoiDung, ND.TenNguoiDung, ND.Email,
+                ND.MaNguoiDung, ND.TenNguoiDung,
                 TC.TenTroChoi,
-                -- THÊM TRƯỜNG IsOwner VÀO KẾT QUẢ
-                CASE WHEN RB.MaNguoiDung = @MaNguoiDung THEN 1 ELSE 0 END AS IsOwner 
+                
+                -- Kiểm tra xem người dùng hiện tại có phải chủ thẻ không
+                CASE WHEN RB.MaNguoiDung = @MaNguoiDung THEN 1 ELSE 0 END AS IsOwner,
+
+                -- [MỚI] Lấy trạng thái đơn hàng và ID người mua (nếu có đơn đang treo)
+                DH.TrangThai AS TrangThaiDonHang,
+                DH.MaNguoiTao AS NguoiMuaId
+
             FROM TheRaoBan RB
             JOIN TheBai TB ON RB.MaThe = TB.MaThe
             JOIN NguoiDung ND ON RB.MaNguoiDung = ND.MaNguoiDung
             JOIN TroChoi TC ON TB.MaTroChoi = TC.MaTroChoi
+            
+            -- [MỚI] JOIN với đơn hàng để lấy thông tin (Chỉ lấy đơn đang xử lý hoặc đã bán)
+            LEFT JOIN DonHang DH ON RB.MaRaoBan = DH.MaRaoBan 
+                                 AND DH.TrangThai IN ('ChoXuLy', 'DaThanhToan', 'DangGiao')
+
             WHERE 1 = 1
         `;
         
         const request = pool.request();
-        
-        // 1. Gán MaNguoiDung để sử dụng trong biểu thức CASE (không loại trừ)
         request.input("MaNguoiDung", sql.Int, maNguoiDungInt);
 
-        // 2. Tìm kiếm theo Từ khóa (Tên Thẻ) - Nếu có
+        // ... (các đoạn filter keyword, maTroChoi giữ nguyên) ...
         if (keyword) {
             query += ` AND TB.TenThe LIKE @keyword`;
             request.input("keyword", sql.NVarChar, `%${keyword}%`);
         }
-
-        // 3. Lọc theo Trò chơi - Nếu có (maTroChoi > 0)
-        const maTroChoiInt = parseInt(maTroChoi);
-        if (maTroChoi && !isNaN(maTroChoiInt) && maTroChoiInt > 0) {
+        if (maTroChoi && !isNaN(parseInt(maTroChoi)) && parseInt(maTroChoi) > 0) {
             query += ` AND TB.MaTroChoi = @MaTroChoi`;
-            request.input("MaTroChoi", sql.Int, maTroChoiInt);
+            request.input("MaTroChoi", sql.Int, parseInt(maTroChoi));
         }
 
-        // 4. Sắp xếp kết quả
         query += ` ORDER BY RB.NgayDang DESC`;
 
         const result = await request.query(query);
-
         res.json({ success: true, data: result.recordset });
 
     } catch (err) {
-        console.error("Lỗi tìm kiếm kết hợp:", err);
-        res.status(500).json({ success: false, error: "Lỗi server: " + err.message });
+        console.error("Lỗi tìm kiếm:", err);
+        res.status(500).json({ success: false, error: err.message });
     }
 });
 

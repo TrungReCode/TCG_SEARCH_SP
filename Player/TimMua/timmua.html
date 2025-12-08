@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="vi">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -8,6 +9,7 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
     <link rel="stylesheet" href="styles.css">
 </head>
+
 <body class="bg-gray-50 p-4 sm:p-8 text-gray-800">
 
     <div class="max-w-7xl mx-auto">
@@ -19,31 +21,35 @@
                 <p class="text-gray-500 mt-2">Mua bán, trao đổi và tìm kiếm thẻ bài sưu tầm</p>
             </div>
             <div class="mt-4 md:mt-0">
-                <button onclick="openWantModal()" class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition transform hover:-translate-y-1">
+                <button onclick="openWantModal()"
+                    class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition transform hover:-translate-y-1">
                     <i class="fas fa-bullhorn mr-2"></i> Đăng Tin Cần Mua
                 </button>
             </div>
         </header>
 
-        <div id="matchSection" class="hidden bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-8 rounded-r-lg shadow-sm animate-fade-in">
+        <div id="matchSection"
+            class="hidden bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-8 rounded-r-lg shadow-sm animate-fade-in">
             <div class="flex items-center mb-3">
                 <i class="fas fa-bolt text-yellow-600 text-xl mr-2"></i>
                 <h3 class="text-lg font-bold text-yellow-800">
-                    Tìm thấy <span id="matchCount" class="bg-red-500 text-white px-2 py-0.5 rounded-full text-sm">0</span> thẻ bạn đang cần!
+                    Tìm thấy <span id="matchCount"
+                        class="bg-red-500 text-white px-2 py-0.5 rounded-full text-sm">0</span> thẻ bạn đang cần!
                 </h3>
             </div>
             <div id="matchList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                </div>
+            </div>
         </div>
-        
+
         <div class="bg-white p-4 rounded-xl shadow-md mb-8 flex flex-col md:flex-row gap-4 sticky top-2 z-30">
             <div class="flex-grow relative">
                 <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
                 <input type="text" id="searchInput" placeholder="Tìm kiếm thẻ đang bán..."
-                       class="w-full pl-10 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
+                    class="w-full pl-10 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
             <div class="md:flex-shrink-0">
-                <select id="gameFilter" class="w-full md:w-56 p-3 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer hover:border-blue-500 transition">
+                <select id="gameFilter"
+                    class="w-full md:w-56 p-3 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer hover:border-blue-500 transition">
                     <option value="">-- Đang tải game... --</option>
                 </select>
             </div>
@@ -71,10 +77,14 @@
 
     </div>
 
-    <div id="cardDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden items-center justify-center p-4 z-50" onclick="if(event.target.id === 'cardDetailModal') closeModal()">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl relative overflow-hidden flex flex-col max-h-[90vh]">
+    <div id="cardDetailModal"
+        class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden items-center justify-center p-4 z-50"
+        onclick="if(event.target.id === 'cardDetailModal') closeModal()">
+        <div
+            class="bg-white rounded-xl shadow-2xl w-full max-w-3xl relative overflow-hidden flex flex-col max-h-[90vh]">
             <div id="modalContent" class="p-6 overflow-y-auto">
-                <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-2xl transition">
+                <button onclick="closeModal()"
+                    class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-2xl transition">
                     <i class="fas fa-times"></i>
                 </button>
                 <div id="cardDetails"></div>
@@ -82,56 +92,73 @@
         </div>
     </div>
 
-    <div id="modalAddWant" class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden items-center justify-center p-4 z-50" onclick="if(event.target.id === 'modalAddWant') closeWantModal()">
+    <div id="modalAddWant" class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden items-center justify-center p-4 z-50"
+        onclick="if(event.target.id === 'modalAddWant') closeWantModal()">
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg relative overflow-hidden flex flex-col max-h-[90vh]">
             <div class="bg-cyan-600 p-4 text-white flex justify-between items-center">
                 <h3 class="text-xl font-bold"><i class="fas fa-plus-circle mr-2"></i> Đăng Tin Cần Mua</h3>
-                <button onclick="closeWantModal()" class="text-white hover:text-gray-200"><i class="fas fa-times"></i></button>
+                <button onclick="closeWantModal()" class="text-white hover:text-gray-200"><i
+                        class="fas fa-times"></i></button>
             </div>
-            
+
             <div class="p-6 overflow-y-auto">
                 <form id="formAddWant" class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Chọn thẻ cần mua (Để hệ thống tự tìm người bán):</label>
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Chọn thẻ cần mua (Để hệ thống tự tìm
+                            người bán):</label>
                         <div class="flex gap-2">
-                            <input type="text" id="wantSearchInput" class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500" placeholder="Gõ tên thẻ (VD: Black Lotus)...">
-                            <button type="button" class="bg-gray-200 hover:bg-gray-300 px-3 rounded-lg text-gray-700" onclick="searchForWant()">
+                            <input type="text" id="wantSearchInput"
+                                class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                                placeholder="Gõ tên thẻ (VD: Black Lotus)...">
+                            <button type="button" class="bg-gray-200 hover:bg-gray-300 px-3 rounded-lg text-gray-700"
+                                onclick="searchForWant()">
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
-                        <div id="wantSearchResults" class="mt-2 max-h-40 overflow-y-auto border-gray-100 divide-y text-sm"></div>
-                        
-                        <div id="selectedWantCard" class="hidden mt-3 p-2 bg-cyan-50 border border-cyan-200 rounded-lg flex items-center justify-between">
+                        <div id="wantSearchResults"
+                            class="mt-2 max-h-40 overflow-y-auto border-gray-100 divide-y text-sm"></div>
+
+                        <div id="selectedWantCard"
+                            class="hidden mt-3 p-2 bg-cyan-50 border border-cyan-200 rounded-lg flex items-center justify-between">
                             <div class="flex items-center gap-3">
                                 <img id="wantCardImg" src="" class="w-10 h-14 object-cover rounded">
                                 <span id="wantCardName" class="font-bold text-cyan-800"></span>
                             </div>
-                            <button type="button" class="text-red-500 hover:text-red-700" onclick="clearSelectedWant()"><i class="fas fa-times-circle"></i></button>
+                            <button type="button" class="text-red-500 hover:text-red-700"
+                                onclick="clearSelectedWant()"><i class="fas fa-times-circle"></i></button>
                         </div>
                         <input type="hidden" id="wantMaThe" value="">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Tiêu đề tin (*)</label>
-                        <input type="text" id="wantTieuDe" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500" placeholder="VD: Cần mua gấp...">
+                        <input type="text" id="wantTieuDe" required
+                            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
+                            placeholder="VD: Cần mua gấp...">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Giá mong muốn($)</label>
-                        <input type="number" id="wantGia" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500" step="0.01" min="0" placeholder="Để trống nếu muốn thỏa thuận">
+                        <input type="number" id="wantGia"
+                            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500" step="0.01" min="0"
+                            placeholder="Để trống nếu muốn thỏa thuận">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Link ảnh minh họa (Nếu chưa chọn thẻ)</label>
-                        <input type="text" id="wantHinhAnh" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500">
+                        <label class="block text-sm font-medium text-gray-700">Link ảnh minh họa (Nếu chưa chọn
+                            thẻ)</label>
+                        <input type="text" id="wantHinhAnh"
+                            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Mô tả chi tiết</label>
-                        <textarea id="wantMoTa" rows="3" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"></textarea>
+                        <textarea id="wantMoTa" rows="3"
+                            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"></textarea>
                     </div>
 
-                    <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg shadow transition">
+                    <button type="submit"
+                        class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg shadow transition">
                         Đăng Tin Ngay
                     </button>
                 </form>
@@ -139,6 +166,50 @@
         </div>
     </div>
 
+    <div id="modalTransaction"
+        class="fixed inset-0 bg-gray-900 bg-opacity-80 hidden items-center justify-center p-4 z-[60]"
+        onclick="if(event.target.id === 'modalTransaction') closeModal()">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-fade-in">
+
+            <button onclick="closeModal()" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition">
+                <i class="fas fa-times text-xl"></i>
+            </button>
+
+            <div class="text-center mb-6">
+                <div
+                    class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    <i class="fas fa-check"></i>
+                </div>
+                <h3 class="text-xl font-bold text-gray-800">Yêu cầu đã được ghi nhận!</h3>
+                <p class="text-sm text-gray-500 mt-2">Vui lòng thực hiện bước tiếp theo để hoàn tất qua Trung gian
+                    Admin.</p>
+            </div>
+
+            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
+                <h4 class="font-bold text-blue-800 mb-2 border-b border-blue-200 pb-2"><i
+                        class="fas fa-info-circle"></i> Thông tin Admin</h4>
+                <div class="space-y-2 text-sm text-gray-700">
+                    <p><strong>Zalo hỗ trợ:</strong> <span id="transZalo"
+                            class="text-lg font-bold text-blue-600 select-all"></span></p>
+                    <p><strong>Ngân hàng:</strong> <span id="transBankName"></span></p>
+                    <p><strong>Số tài khoản:</strong> <span id="transBankNum"
+                            class="font-mono font-bold select-all bg-white px-1 rounded border"></span></p>
+                </div>
+            </div>
+
+            <div class="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800 mb-4">
+                <strong>Nội dung chuyển khoản/nhắn tin:</strong><br>
+                <span id="transContent" class="font-bold text-lg select-all"></span>
+            </div>
+
+            <button onclick="closeModal()"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
+                Đã hiểu, tôi sẽ liên hệ ngay
+            </button>
+        </div>
+    </div>
+
     <script src="script.js"></script>
 </body>
+
 </html>

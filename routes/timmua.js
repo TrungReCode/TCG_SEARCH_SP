@@ -46,31 +46,42 @@ router.post("/add", async (req, res) => {
 // =========================================================================
 router.get("/list", async (req, res) => {
     try {
+        const { maNguoiDung } = req.query; // Nhận tham số từ Frontend
         const pool = await connectDB();
-        // Logic COALESCE: Ưu tiên ảnh User Up -> Nếu ko có thì lấy ảnh Thẻ gốc -> Nếu ko có thì Null
-        const result = await pool.request().query(`
+        
+        // Sử dụng CASE WHEN EXISTS để kiểm tra xem User hiện tại đã có đơn hàng 'BAN' cho tin này chưa
+        let sqlQuery = `
             SELECT 
-                cm.MaCanMua, 
-                cm.TieuDe, 
-                cm.MoTa,
-                cm.GiaMongMuon, 
-                cm.NgayDang,
-                cm.MaThe,
-                nd.TenNguoiDung,
-                nd.MaNguoiDung,
-                tb.TenThe AS TenTheGoc,
-                COALESCE(cm.HinhAnh, tb.HinhAnh) AS HinhAnhHienThi
+                cm.MaCanMua, cm.TieuDe, cm.MoTa, cm.GiaMongMuon, cm.NgayDang, cm.MaThe,
+                nd.TenNguoiDung, nd.MaNguoiDung,
+                COALESCE(cm.HinhAnh, tb.HinhAnh) AS HinhAnhHienThi,
+                
+                -- [FIX] Cột DaLienHe: 1 nếu đã có đơn hàng (chưa hủy), 0 nếu chưa
+                CASE WHEN EXISTS (
+                    SELECT 1 FROM DonHang dh 
+                    WHERE dh.MaCanMua = cm.MaCanMua 
+                    AND dh.MaNguoiTao = @CurrentUser 
+                    AND dh.LoaiGiaoDich = 'BAN'
+                    AND dh.TrangThai IN ('ChoXuLy', 'DaThanhToan', 'DangGiao')
+                ) THEN 1 ELSE 0 END AS DaLienHe
+
             FROM TheCanMua cm
             JOIN NguoiDung nd ON cm.MaNguoiDung = nd.MaNguoiDung
             LEFT JOIN TheBai tb ON cm.MaThe = tb.MaThe
             WHERE cm.DaKetThuc = 0 
             ORDER BY cm.NgayDang DESC
-        `);
+        `;
+        
+        const request = pool.request();
+        // Nếu client không gửi maNguoiDung (chưa login), dùng -1 để không khớp với ai
+        request.input("CurrentUser", sql.Int, maNguoiDung ? parseInt(maNguoiDung) : -1);
 
+        const result = await request.query(sqlQuery);
         res.json(result.recordset);
+
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi lấy danh sách cần mua" });
+        console.error("Lỗi lấy danh sách cần mua:", err);
+        res.status(500).json({ error: "Lỗi server" });
     }
 });
 

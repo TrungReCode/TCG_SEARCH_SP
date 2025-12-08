@@ -43,6 +43,10 @@ app.use('/users', usersRouter);
 const timmuaRouter = require('./routes/timmua');
 app.use('/timmua', timmuaRouter);
 
+//orders
+const ordersRouter = require('./routes/orders');
+app.use('/orders', ordersRouter);
+
 const loginRouter = require('./routes/login');
 const registerRouter = require('./routes/register');
 
