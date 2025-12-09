@@ -173,7 +173,7 @@ function renderContentTable(data) {
         const title = isSelling ? item.TenThe : item.TieuDe;
         const user = item.TenNguoiDung || 'Ẩn danh';
         const price = isSelling ? item.GiaBan : item.GiaMongMuon;
-        const priceDisplay = price ? new Intl.NumberFormat('vi-VN').format(price) + ' đ' : 'Thỏa thuận';
+        const priceDisplay = price ? new Intl.NumberFormat('en-US').format(price) + ' $' : 'Thỏa thuận';
         
         // Encode dữ liệu an toàn để truyền vào hàm onclick
         const itemString = encodeURIComponent(JSON.stringify(item));
@@ -298,7 +298,7 @@ if(DOM.formEdit) {
     });
 }
 
-function formatMoney(n) { return new Intl.NumberFormat('vi-VN').format(n) + ' đ'; }
+function formatMoney(n) { return new Intl.NumberFormat('en-US').format(n) + ' $'; }
 
 // Init
 document.addEventListener('DOMContentLoaded', loadData);
