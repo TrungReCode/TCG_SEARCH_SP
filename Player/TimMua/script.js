@@ -22,6 +22,8 @@ const DOM = {
     buyingList: document.getElementById('buyingList'),
     searchInput: document.getElementById('searchInput'),
     gameFilter: document.getElementById('gameFilter'),
+    // Modal-specific game select for "Đăng Tin Cần Mua"
+    wantGameFilter: document.getElementById('wantGameFilter'),
     // Modals
     modalDetail: document.getElementById('cardDetailModal'),
     modalAddWant: document.getElementById('modalAddWant'),
@@ -501,7 +503,11 @@ window.searchForWant = async () => {
     DOM.wantSearchResults.innerHTML = '<p class="text-gray-500 text-center p-2">Đang tìm...</p>';
 
     try {
-        const data = await fetchData(`${API.CARDS}/search?q=${encodeURIComponent(keyword)}&MaTroChoi=1`);
+        // Prefer modal's game select; fall back to main filter if modal select not present
+        const selectedGame = (DOM.wantGameFilter && DOM.wantGameFilter.value) ? DOM.wantGameFilter.value : (DOM.gameFilter ? DOM.gameFilter.value : '');
+        const params = new URLSearchParams({ q: keyword });
+        if (selectedGame) params.append('MaTroChoi', selectedGame);
+        const data = await fetchData(`${API.CARDS}/search?${params.toString()}`);
         if (!data || data.length === 0) {
             DOM.wantSearchResults.innerHTML = '<p class="text-red-500 text-center p-2">Không tìm thấy thẻ.</p>';
             return;
@@ -568,15 +574,24 @@ if (DOM.formAddWant) {
 
 // 4. Load Games & Search Debounce
 async function fetchGames() {
-    if (!DOM.gameFilter) return;
     try {
         const data = await fetchData(API.GAMES);
         const list = Array.isArray(data) ? data : (data.data || []);
         
-        DOM.gameFilter.innerHTML = '<option value="">-- Tất cả Trò chơi --</option>';
-        list.forEach(g => {
-            DOM.gameFilter.innerHTML += `<option value="${g.MaTroChoi}">${g.TenTroChoi}</option>`;
-        });
+        if (DOM.gameFilter) {
+            DOM.gameFilter.innerHTML = '<option value="">-- Tất cả Trò chơi --</option>';
+            list.forEach(g => {
+                DOM.gameFilter.innerHTML += `<option value="${g.MaTroChoi}">${g.TenTroChoi}</option>`;
+            });
+        }
+
+        // Populate modal-specific game select if present
+        if (DOM.wantGameFilter) {
+            DOM.wantGameFilter.innerHTML = '<option value="">-- Chọn Trò chơi --</option>';
+            list.forEach(g => {
+                DOM.wantGameFilter.innerHTML += `<option value="${g.MaTroChoi}">${g.TenTroChoi}</option>`;
+            });
+        }
     } catch (e) { console.error(e); }
 }
 
