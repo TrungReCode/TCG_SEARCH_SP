@@ -1,207 +1,31 @@
+// =====================================================================
+// CẤU HÌNH & KHỞI TẠO
+// =====================================================================
 const API_BASE_URL = "http://localhost:3000";
 const RAOBAN_URL = `${API_BASE_URL}/raoban`;
 const CARDS_URL = `${API_BASE_URL}/cards`;
 const TROCHOI_URL = `${API_BASE_URL}/games`;
 const currentUserId = localStorage.getItem("maNguoiDung");
 
-// =====================================================================
-// HÀM TẢI DANH SÁCH TRÒ CHƠI (MỚI)
-// =====================================================================
-async function loadTroChoiList() {
-    const select = document.getElementById('selectMaTroChoi');
-    select.innerHTML = '<option value="">Đang tải...</option>';
-    
-    try {
-        const response = await fetch(TROCHOI_URL); 
-        // Backend trả về mảng recordset trực tiếp: [{ MaTroChoi: 1, TenTroChoi: 'Game A' }, ...]
-        const data = await response.json();
-        
-        if (response.status !== 200) throw new Error(data.error || "Lỗi tải danh sách trò chơi.");
-
-        select.innerHTML = '<option value="">-- Chọn Trò Chơi --</option>';
-        if (data.length > 0) {
-            data.forEach(game => {
-                const option = document.createElement('option');
-                option.value = game.MaTroChoi;
-                option.textContent = game.TenTroChoi;
-                select.appendChild(option);
-            });
-            // Tự động chọn game đầu tiên để tiện test và search
-            select.selectedIndex = 1; 
-            
-            // Kích hoạt tìm kiếm ban đầu (nếu có keyword sẵn)
-            searchCards(document.getElementById('searchKeyword').value);
-        } else {
-             select.innerHTML = '<option value="">Không có trò chơi nào</option>';
-        }
-
-    } catch (err) {
-        console.error("Lỗi tải danh sách trò chơi:", err);
-        select.innerHTML = '<option value="">Lỗi tải dữ liệu</option>';
-    }
+// Kiểm tra đăng nhập
+if (!currentUserId) {
+    alert("Vui lòng đăng nhập để quản lý thẻ bán.");
+    window.location.href = "login.html"; 
 }
-
-// =====================================================================
-// 2. TÌM KIẾM THẺ GỐC ĐỂ THÊM
-// =====================================================================
-async function searchCards(keyword) {
-    const searchResults = document.getElementById("searchResults");
-    const maTroChoi = document.getElementById('selectMaTroChoi').value;
-    
-    if (!maTroChoi) {
-        searchResults.innerHTML = '<p style="color:red;">Vui lòng chọn Trò Chơi trước.</p>';
-        return;
-    }
-    
-    if (keyword.length < 2) { 
-        searchResults.innerHTML = '<p>Bắt đầu nhập 2 ký tự trở lên để tìm kiếm.</p>';
-        return;
-    }
-    
-    searchResults.innerHTML = '<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Đang tìm...</p>';
-
-    try {
-        const response = await fetch(`${CARDS_URL}/search?q=${encodeURIComponent(keyword)}&MaTroChoi=${maTroChoi}`); 
-        const result = await response.json();
-
-        if (response.status !== 200) throw new Error(result.error || "Lỗi tìm kiếm thẻ gốc.");
-        
-        searchResults.innerHTML = '';
-
-        if (result.length === 0) {
-            searchResults.innerHTML = `<p>Không tìm thấy thẻ nào với từ khóa "${keyword}".</p>`;
-            return;
-        }
-
-        result.forEach(card => {
-            const maThe = card.MaThe;
-            // Xử lý Escape dấu nháy đơn (') để tránh lỗi cú pháp HTML onclick
-            const rawTenThe = card.TenThe || "";
-            const safeTenThe = rawTenThe.replace(/'/g, "\\'"); 
-            
-            const hinhAnh = card.HinhAnh || 'https://via.placeholder.com/50x70?text=No+Img';
-            // Lấy giá gợi ý từ DB
-            const giaGoiY = parseFloat(card.Gia) || 0;
-
-            const item = document.createElement('div');
-            item.className = 'search-item';
-
-            item.innerHTML = `
-                <div class="search-item-info">
-                    <img src="${hinhAnh}" alt="${safeTenThe}">
-                    <div>
-                        <span style="font-weight:bold;">${rawTenThe}</span> 
-                        ${maThe ? `<small style="color:#666;">(ID: ${maThe})</small>` : ''}
-                        <br/>
-                        <small style="color: #28a745;">Gợi ý: $${giaGoiY.toFixed(2)}</small>
-                    </div>
-                </div>
-                <button class="btn btn-success btn-small" 
-                        onclick="selectCardForSale('${maThe}', '${safeTenThe}', '${hinhAnh}', ${giaGoiY})">
-                    <i class="fas fa-plus"></i> Rao Bán
-                </button>
-            `;
-            searchResults.appendChild(item);
-        });
-
-    } catch (err) {
-        searchResults.innerHTML = `<p style="color:red">Lỗi tìm kiếm: ${err.message}</p>`;
-    }
-}
-
-// =====================================================================
-// 3. XỬ LÝ THÊM MỚI
-// =====================================================================
-
-// Bước 1: Chọn thẻ từ kết quả tìm kiếm, điền vào form Add
-// Thêm tham số 'gia' vào cuối
-async function selectCardForSale(maThe, tenThe, hinhAnh, gia) {
-    closeModal('modalSearch'); 
-    openAddModal();
-
-    const giaInput = document.getElementById("addGia");
-    
-    // BƯỚC 1: Hiển thị ngay giá cũ lấy từ danh sách search (Tăng tốc độ cảm nhận)
-    const oldPrice = parseFloat(gia) || 0;
-    giaInput.value = oldPrice.toFixed(2);
-
-    document.getElementById("addMaTheDisplay").textContent = tenThe; 
-    document.getElementById("addMaThe").value = maThe; 
-    document.getElementById("addCardImage").src = hinhAnh; 
-    
-    giaInput.focus();
-    giaInput.select();
-
-    
-}
-
-document.getElementById("salesList").addEventListener("click", function(e) {
-    const target = e.target;
-
-    // Xử lý nút sửa
-    if (target.classList.contains("btn-edit")) {
-        const maRaoBan = target.dataset.id; // gán data-id cho mỗi nút
-        openEditModal(maRaoBan);
-    }
-
-    // Xử lý nút xóa
-    if (target.classList.contains("btn-delete")) {
-        const maRaoBan = target.dataset.id;
-        deleteItem(maRaoBan);
-    }
-});
-
-
-// (GIỮ NGUYÊN FORM ADD SUBMIT)
-document.getElementById("formAdd").addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const payload = {
-        MaNguoiDung: parseInt(currentUserId),
-        MaThe: parseInt(document.getElementById("addMaThe").value),
-        Gia: parseFloat(document.getElementById("addGia").value),
-        TinhTrang: document.getElementById("addTinhTrang").value,
-        MoTa: document.getElementById("addMoTa").value
-    };
-    
-    if (isNaN(payload.MaThe)) {
-        alert("Vui lòng chọn thẻ hợp lệ từ kết quả tìm kiếm.");
-        return;
-    }
-
-    try {
-        const response = await fetch(`${RAOBAN_URL}/add`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            alert("Đăng bán thành công!");
-            closeModal('modalAdd');
-            document.getElementById("formAdd").reset();
-            fetchSalesList(); 
-        } else {
-            alert("Lỗi: " + (result.error || result.message));
-        }
-    } catch (err) {
-        alert("Lỗi hệ thống: " + err.message);
-    }
-});
 
 document.addEventListener("DOMContentLoaded", () => {
-    loadTroChoiList(); // Load danh sách game trước
-    fetchSalesList();  // Load danh sách bán hàng
+    fetchSalesList(); // Load danh sách ngay khi vào trang
 });
 
+// =====================================================================
+// 1. QUẢN LÝ DANH SÁCH RAO BÁN (List & Delete)
+// =====================================================================
 
-// =====================================================================
-// 1. LOAD DANH SÁCH RAO BÁN CỦA NGƯỜI DÙNG (Route: GET /raoban/list/:id)
-// =====================================================================
 async function fetchSalesList() {
     const listContainer = document.getElementById("salesList");
-    listContainer.innerHTML = '<p class="loading-text"><i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...</p>';
+    if (!listContainer) return;
+
+    listContainer.innerHTML = '<p class="loading-text text-center py-10 text-gray-500 italic col-span-full"><i class="fas fa-spinner fa-spin"></i> Đang tải dữ liệu...</p>';
     
     try {
         const response = await fetch(`${RAOBAN_URL}/list/${currentUserId}`);
@@ -213,26 +37,45 @@ async function fetchSalesList() {
         listContainer.innerHTML = "";
 
         if (data.length === 0) {
-            listContainer.innerHTML = "<p>Bạn chưa rao bán thẻ nào.</p>";
+            listContainer.innerHTML = "<p class='col-span-full text-center text-gray-500 py-10'>Bạn chưa rao bán thẻ nào.</p>";
             return;
         }
 
         data.forEach(item => {
+            let statusClass = "bg-gray-100 text-gray-600";
+            if(item.TinhTrang.includes("NM")) statusClass = "bg-green-100 text-green-700";
+            else if(item.TinhTrang.includes("HP")) statusClass = "bg-red-100 text-red-700";
+
+            // [FIX] Dùng placehold.co
+            const imgSrc = item.HinhAnh || 'https://placehold.co/300?text=No+Img';
+
             const cardHTML = `
-                <div class="card-item" id="card-${item.MaRaoBan}">
-                    <img src="${item.HinhAnh || 'https://via.placeholder.com/300'}" alt="${item.TenThe}" class="card-img">
-                    <div class="card-body">
-                        <h3 class="card-title">${item.TenThe}</h3>
-                        <p class="card-price">Giá bán: <strong>${formatCurrencyUSD(item.GiaBan)}</strong></p>
-                        <span class="card-status status-${item.TinhTrang.toLowerCase().replace(/\s/g, '')}">${item.TinhTrang}</span>
-                        <p style="font-size: 0.9em; color: #666; margin-top: 5px;">${item.MoTa || 'Không có mô tả'}</p>
+                <div class="bg-white border rounded-xl shadow-sm hover:shadow-md transition p-4 flex flex-col relative" id="card-${item.MaRaoBan}">
+                    <div class="flex gap-4">
+                        <img src="${imgSrc}" alt="${item.TenThe}" class="w-20 h-28 object-cover rounded border bg-gray-50">
+                        <div class="flex-grow min-w-0">
+                            <h3 class="font-bold text-gray-800 truncate" title="${item.TenThe}">${item.TenThe}</h3>
+                            <p class="text-xs text-gray-500 mb-2 uppercase font-bold tracking-wider">${item.TenTroChoi || 'N/A'}</p>
+                            
+                            <div class="flex items-center gap-2 mb-2">
+                                <span class="font-bold text-red-600 text-lg">${formatCurrencyUSD(item.GiaBan)}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${statusClass}">${item.TinhTrang}</span>
+                            </div>
+                        </div>
                     </div>
-                    <div class="card-actions">
-                        <button class="btn btn-primary" onclick="openEditModal(${item.MaRaoBan}, '${item.GiaBan}', '${item.TinhTrang}', '${item.MoTa || ''}')">
+                    
+                    <div class="mt-3 bg-gray-50 p-2 rounded text-xs text-gray-600 italic line-clamp-2 h-10">
+                        ${item.MoTa || 'Không có mô tả chi tiết'}
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-2 mt-4 pt-3 border-t border-gray-100">
+                        <button class="flex items-center justify-center gap-1 bg-blue-50 text-blue-600 hover:bg-blue-100 py-2 rounded-lg text-sm font-medium transition" 
+                                onclick="openEditModal(${item.MaRaoBan}, '${item.GiaBan}', '${item.TinhTrang}', '${encodeURIComponent(item.MoTa || '')}')">
                             <i class="fas fa-edit"></i> Sửa
                         </button>
-                        <button class="btn btn-danger" onclick="deleteItem(${item.MaRaoBan})">
-                            <i class="fas fa-trash"></i> Xóa
+                        <button class="flex items-center justify-center gap-1 bg-red-50 text-red-600 hover:bg-red-100 py-2 rounded-lg text-sm font-medium transition" 
+                                onclick="deleteItem(${item.MaRaoBan})">
+                            <i class="fas fa-trash-alt"></i> Xóa
                         </button>
                     </div>
                 </div>
@@ -242,62 +85,32 @@ async function fetchSalesList() {
 
     } catch (err) {
         console.error(err);
-        listContainer.innerHTML = `<p style="color:red">Lỗi tải dữ liệu: ${err.message}</p>`;
+        listContainer.innerHTML = `<p class="col-span-full text-red-500 text-center">Lỗi tải dữ liệu: ${err.message}</p>`;
     }
 }
 
-// =====================================================================
-// 4. XỬ LÝ CẬP NHẬT (Route: PUT /raoban/update/:maRaoBan)
-// =====================================================================
-document.getElementById("formEdit").addEventListener("submit", async (e) => {
-    e.preventDefault();
-
-    const maRaoBan = document.getElementById("editmaRaoBan").value;
-    const payload = {
-        MaNguoiDung: parseInt(currentUserId), // Quan trọng cho bảo mật (đã sửa ở backend)
-        Gia: parseFloat(document.getElementById("editGia").value),
-        TinhTrang: document.getElementById("editTinhTrang").value,
-        MoTa: document.getElementById("editMoTa").value
-    };
-
-    try {
-        const response = await fetch(`${RAOBAN_URL}/update/${maRaoBan}`, {
-            method: "PUT",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify(payload)
-        });
-
-        const result = await response.json();
-        if (result.success) {
-            alert("Cập nhật thành công!");
-            closeModal('modalEdit');
-            fetchSalesList(); 
-        } else {
-            alert("Lỗi: " + (result.error || result.message));
-        }
-    } catch (err) {
-        alert("Lỗi hệ thống: " + err.message);
-    }
-});
-
-// =====================================================================
-// 5. XỬ LÝ XÓA (Route: DELETE /raoban/delete/:maRaoBan)
-// =====================================================================
 async function deleteItem(maRaoBan) {
-    if (!confirm("Bạn có chắc chắn muốn xóa tin rao bán này không?")) return;
+    if (!confirm("Bạn có chắc chắn muốn xóa tin này?")) return;
 
     try {
-        const response = await fetch(`${RAOBAN_URL}/delete/${maRaoBan}`, {
+        const response = await fetch(`${RAOBAN_URL}/${maRaoBan}`, {
             method: "DELETE",
             headers: { "Content-Type": "application/json" },
-            // Gửi MaNguoiDung để backend check quyền sở hữu
-            body: JSON.stringify({ maNguoiDung: currentUserId }) 
+            body: JSON.stringify({ maNguoiDung: parseInt(currentUserId) }) 
         });
 
         const result = await response.json();
         if (result.success) {
-            alert("Đã xóa thành công!");
-            document.getElementById(`card-${maRaoBan}`).remove();
+            const item = document.getElementById(`card-${maRaoBan}`);
+            if(item) {
+                item.style.opacity = '0';
+                item.style.transform = 'scale(0.9)';
+                setTimeout(() => item.remove(), 300);
+            }
+            setTimeout(() => {
+                const list = document.getElementById("salesList");
+                if(list && list.children.length === 0) fetchSalesList();
+            }, 350);
         } else {
             alert("Lỗi: " + (result.error || result.message));
         }
@@ -307,43 +120,258 @@ async function deleteItem(maRaoBan) {
 }
 
 // =====================================================================
-// HÀM TIỆN ÍCH & UI (Modal / Format)
-// (Giữ nguyên các hàm này so với phiên bản trước)
+// 2. MODAL ĐĂNG BÁN MỚI (Tích hợp Tìm kiếm)
 // =====================================================================
-function formatCurrencyUSD(value) {
-    if (!value && value !== 0) return '';
-    return parseFloat(value).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+
+// Mở Modal & Load Game
+async function openAddModal() {
+    const modal = document.getElementById("modalAdd");
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
+    document.getElementById("formAdd").reset();
+    resetSelection();
+    
+    const select = document.getElementById("addMaTroChoi");
+    if (select.options.length <= 1) { 
+        select.innerHTML = '<option value="">Đang tải...</option>';
+        try {
+            const res = await fetch(TROCHOI_URL);
+            const data = await res.json();
+            const list = Array.isArray(data) ? data : (data.data || []);
+            
+            select.innerHTML = '<option value="">-- Chọn Game --</option>';
+            list.forEach(g => {
+                select.innerHTML += `<option value="${g.MaTroChoi}">${g.TenTroChoi}</option>`;
+            });
+        } catch(e) { console.error(e); select.innerHTML = '<option value="">Lỗi tải game</option>'; }
+    }
 }
 
-function openAddModal() {
-    document.getElementById("modalAdd").style.display = "block";
+// Tìm Kiếm Thẻ (Debounce)
+let debounceTimeout;
+const searchInput = document.getElementById('addSearchInput');
+if(searchInput) {
+    searchInput.addEventListener('input', function() {
+        clearTimeout(debounceTimeout);
+        debounceTimeout = setTimeout(() => searchForSell(), 500);
+    });
 }
 
-function openSearchModal() {
-    document.getElementById("modalSearch").style.display = "block";
-    document.getElementById("searchKeyword").focus();
+async function searchForSell() {
+    const keyword = document.getElementById("addSearchInput").value.trim();
+    const gameId = document.getElementById("addMaTroChoi").value;
+    const resultBox = document.getElementById("addSearchResults");
+
+    if (!gameId) {
+        resultBox.classList.remove('hidden');
+        resultBox.innerHTML = '<p class="text-red-500 p-2 text-sm text-center">Vui lòng chọn Game trước.</p>';
+        return;
+    }
+    if (keyword.length < 2) {
+        resultBox.classList.add('hidden');
+        return;
+    }
+
+    resultBox.classList.remove('hidden');
+    resultBox.innerHTML = '<p class="text-gray-500 p-2 text-sm text-center"><i class="fas fa-spinner fa-spin"></i> Đang tìm...</p>';
+
+    try {
+        const response = await fetch(`${CARDS_URL}/search?q=${encodeURIComponent(keyword)}&MaTroChoi=${gameId}`);
+        const result = await response.json();
+        const cards = Array.isArray(result) ? result : (result.data || []);
+
+        if (cards.length === 0) {
+            resultBox.innerHTML = '<p class="text-gray-500 p-2 text-sm text-center">Không tìm thấy thẻ nào.</p>';
+            return;
+        }
+
+        resultBox.innerHTML = cards.map(c => {
+            const safeName = c.TenThe.replace(/'/g, "\\'");
+            const safeImg = c.HinhAnh || 'https://placehold.co/50';
+            const price = c.Gia || 0;
+
+            return `
+                <div class="flex items-center gap-3 p-2 hover:bg-blue-50 cursor-pointer border-b last:border-0 transition"
+                     onclick="selectSellCard('${c.MaThe}', '${safeName}', '${safeImg}', ${price})">
+                    <img src="${safeImg}" class="w-10 h-14 object-cover rounded bg-white border">
+                    <div class="min-w-0">
+                        <div class="font-bold text-sm text-gray-800 truncate">${c.TenThe}</div>
+                        <div class="text-xs text-gray-500">Gợi ý: <span class="text-green-600 font-bold">$${price}</span></div>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (err) {
+        console.error(err);
+        resultBox.innerHTML = '<p class="text-red-500 p-2 text-sm text-center">Lỗi kết nối.</p>';
+    }
 }
 
-function openEditModal(maRaoBan, gia, tinhTrang, moTa) {
-    document.getElementById("modalEdit").style.display = "block";
+// 3. Chọn Thẻ từ danh sách tìm kiếm
+function selectSellCard(id, name, img, suggestedPrice) {
+    // Ẩn kết quả tìm kiếm
+    document.getElementById("addSearchResults").classList.add("hidden");
+    document.getElementById("addSearchInput").value = ""; 
+
+    // Lưu ID thẻ
+    document.getElementById("addMaThe").value = id;
+
+    // Hiển thị Preview Thẻ đã chọn
+    document.getElementById("selectedCardPreview").classList.remove("hidden");
+    document.getElementById("selectedCardPreview").classList.add("flex");
+    document.getElementById("previewImgInfo").src = img;
+    document.getElementById("previewNameInfo").textContent = name;
+    document.getElementById("previewIdInfo").textContent = id;
+
+    // Điền dữ liệu gợi ý (Nếu người dùng chưa nhập gì thì mới điền)
+    const giaInput = document.getElementById("addGia");
+    if (!giaInput.value) {
+        giaInput.value = suggestedPrice || 0;
+    }
+    
+    // Tự động điền link ảnh gốc vào ô Link (để người dùng biết)
+    document.getElementById("addHinhAnh").value = img;
+    document.getElementById("finalPreviewImg").src = img;
+}
+
+// 4. Reset Selection (Bỏ chọn thẻ)
+function resetSelection() {
+    document.getElementById("addMaThe").value = "";
+    
+    // Ẩn preview thẻ
+    document.getElementById("selectedCardPreview").classList.add("hidden");
+    document.getElementById("selectedCardPreview").classList.remove("flex");
+    
+    // Reset ảnh preview về placeholder, nhưng KHÔNG xóa giá hay mô tả người dùng đã nhập
+    document.getElementById("finalPreviewImg").src = "https://placehold.co/40";
+    document.getElementById("addHinhAnh").value = "";
+    
+    // Lưu ý: Không còn code ẩn/hiện div 'sellDetails' nữa
+}
+
+function updatePreviewImage(url) {
+    const img = document.getElementById("finalPreviewImg");
+    img.src = url || 'https://placehold.co/40';
+}
+
+// Submit Đăng Bán
+const formAdd = document.getElementById("formAdd");
+if(formAdd){
+    formAdd.addEventListener("submit", async (e) => {
+        e.preventDefault();
+
+        const payload = {
+            MaNguoiDung: parseInt(currentUserId),
+            MaThe: document.getElementById("addMaThe").value,
+            Gia: document.getElementById("addGia").value,
+            TinhTrang: document.getElementById("addTinhTrang").value,
+            HinhAnh: document.getElementById("addHinhAnh").value,
+            MoTa: document.getElementById("addMoTa").value
+        };
+
+        // Validate quan trọng: Phải chọn thẻ mới được đăng
+        if (!payload.MaThe) {
+            alert("Vui lòng chọn thẻ từ thanh tìm kiếm trước khi đăng bán!");
+            document.getElementById("addSearchInput").focus();
+            return;
+        }
+
+        const btn = document.getElementById("btnSubmitSell");
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerText = "Đang xử lý...";
+
+        try {
+            const response = await fetch(`${RAOBAN_URL}/add`, {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+
+            if (result.success) {
+                alert("Đăng bán thành công!");
+                closeModal('modalAdd');
+                fetchSalesList(); 
+            } else {
+                alert("Lỗi: " + result.error);
+            }
+        } catch (err) {
+            alert("Lỗi hệ thống");
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    });
+}
+
+// =====================================================================
+// 3. MODAL SỬA & TIỆN ÍCH
+// =====================================================================
+
+function openEditModal(maRaoBan, gia, tinhTrang, moTaEncoded) {
+    const moTa = decodeURIComponent(moTaEncoded);
+    const modal = document.getElementById("modalEdit");
+    modal.classList.remove('hidden');
+    modal.classList.add('flex');
+    
     document.getElementById("editmaRaoBan").value = maRaoBan;
     document.getElementById("editGia").value = parseFloat(gia);
     document.getElementById("editTinhTrang").value = tinhTrang;
     document.getElementById("editMoTa").value = moTa;
 }
 
-function closeModal(modalId) {
-    document.getElementById(modalId).style.display = "none";
+const formEdit = document.getElementById("formEdit");
+if(formEdit){
+    formEdit.addEventListener("submit", async (e) => {
+        e.preventDefault();
+        const maRaoBan = document.getElementById("editmaRaoBan").value;
+        const payload = {
+            MaNguoiDung: parseInt(currentUserId), 
+            Gia: parseFloat(document.getElementById("editGia").value),
+            TinhTrang: document.getElementById("editTinhTrang").value,
+            MoTa: document.getElementById("editMoTa").value
+        };
+
+        try {
+            const response = await fetch(`${RAOBAN_URL}/update/${maRaoBan}`, {
+                method: "PUT",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify(payload)
+            });
+            const result = await response.json();
+            if (result.success) {
+                alert("Cập nhật thành công!");
+                closeModal('modalEdit');
+                fetchSalesList(); 
+            } else {
+                alert("Lỗi: " + result.error);
+            }
+        } catch (err) { alert("Lỗi hệ thống"); }
+    });
 }
 
-window.onclick = function(event) {
-    if (event.target.classList.contains('modal')) {
-        event.target.style.display = "none";
-        if (event.target.id === 'modalSearch') {
-             document.getElementById("searchResults").innerHTML = '';
-             document.getElementById("searchKeyword").value = '';
-        }
+function closeModal(modalId) {
+    const modal = document.getElementById(modalId);
+    if(modal) {
+        modal.classList.remove('flex');
+        modal.classList.add('hidden');
     }
 }
 
-document.addEventListener("DOMContentLoaded", fetchSalesList);
+function formatCurrencyUSD(value) {
+    if (!value && value !== 0) return '';
+    return parseFloat(value).toLocaleString('en-US', { style: 'currency', currency: 'USD' });
+}
+
+// Gán hàm vào window để HTML gọi được
+window.openAddModal = openAddModal;
+window.openEditModal = openEditModal;
+window.deleteItem = deleteItem;
+window.closeModal = closeModal;
+window.searchForSell = searchForSell;
+window.selectSellCard = selectSellCard;
+window.resetSelection = resetSelection;
+window.updatePreviewImage = updatePreviewImage;

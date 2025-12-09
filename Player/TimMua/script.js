@@ -30,11 +30,11 @@ const DOM = {
     modalTrans: document.getElementById('modalTransaction'),
     // Modal Content
     cardDetails: document.getElementById('cardDetails'),
-    // Transaction Modal Fields
-    transZalo: document.getElementById('transZalo'),
-    transBankName: document.getElementById('transBankName'),
-    transBankNum: document.getElementById('transBankNum'),
+    // Transaction Modal Fields (CẬP NHẬT CHO ZALO)
+    btnZaloContact: document.getElementById('btnZaloContact'),
+    txtZaloPhone: document.getElementById('txtZaloPhone'),
     transContent: document.getElementById('transContent'),
+    
     // Add Want Form
     formAddWant: document.getElementById('formAddWant'),
     wantSearchInput: document.getElementById('wantSearchInput'),
@@ -130,7 +130,6 @@ async function fetchCards(keyword = "", gameId = "") {
 async function fetchBuyingList() {
     if (!DOM.buyingList) return;
     try {
-        // [FIX] Truyền ID người dùng lên để server check xem đã liên hệ chưa
         const url = `${API.BUYING}/list?maNguoiDung=${CONFIG.USER_ID}`;
         const data = await fetchData(url);
 
@@ -184,78 +183,47 @@ window.fetchCardDetail = async function (maRaoBan) {
  * ====================================================================
  */
 
-// script.js
-
 function renderCardList(cards) {
     DOM.cardList.innerHTML = cards.map(card => {
         if (!card.MaRaoBan) return '';
 
         const isOwner = Number(card.MaNguoiDung) === CONFIG.USER_ID;
-        // Kiểm tra xem có đơn hàng đang treo không
         const hasActiveOrder = card.TrangThaiDonHang && ['ChoXuLy', 'DaThanhToan', 'DangGiao'].includes(card.TrangThaiDonHang);
-        // Kiểm tra xem mình có phải người mua thẻ này không
         const isMyOrder = hasActiveOrder && (Number(card.NguoiMuaId) === CONFIG.USER_ID);
 
-        // Xử lý Giao diện (UI Logic)
         let btnAction = '';
         let statusBadge = '';
         let borderClass = 'border border-gray-100';
         let opacityClass = '';
 
         if (isOwner) {
-            // TRƯỜNG HỢP 1: THẺ CỦA MÌNH
             borderClass = 'border-2 border-yellow-400 ring-2 ring-yellow-50';
             btnAction = `<span class="text-xs font-bold text-yellow-700 bg-yellow-100 px-3 py-1.5 rounded-full">Thẻ của bạn</span>`;
-
             if (hasActiveOrder) {
                 statusBadge = `<div class="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold shadow animate-pulse">Khách đã đặt</div>`;
             }
-
         } else if (isMyOrder) {
-            // TRƯỜNG HỢP 2: MÌNH ĐÃ ĐẶT MUA
             borderClass = 'border-2 border-green-500 ring-2 ring-green-50';
-            btnAction = `<button disabled class="text-sm bg-green-600 text-white px-4 py-1.5 rounded font-bold cursor-default shadow-sm">
-                            <i class="fas fa-check-circle"></i> Bạn đã đặt mua
-                         </button>`;
+            btnAction = `<button disabled class="text-sm bg-green-600 text-white px-4 py-1.5 rounded font-bold cursor-default shadow-sm"><i class="fas fa-check-circle"></i> Bạn đã đặt mua</button>`;
             statusBadge = `<div class="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-bold shadow">Đơn của bạn</div>`;
-
         } else if (hasActiveOrder) {
-            // TRƯỜNG HỢP 3: NGƯỜI KHÁC ĐÃ ĐẶT
-            opacityClass = 'opacity-70 grayscale-[50%]'; // Làm mờ nhẹ
-            btnAction = `<button disabled class="text-sm bg-gray-300 text-gray-500 px-4 py-1.5 rounded cursor-not-allowed font-medium">
-                            Đã có người đặt
-                         </button>`;
+            opacityClass = 'opacity-70 grayscale-[50%]';
+            btnAction = `<button disabled class="text-sm bg-gray-300 text-gray-500 px-4 py-1.5 rounded cursor-not-allowed font-medium">Đã có người đặt</button>`;
             statusBadge = `<div class="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold shadow">Đã bán</div>`;
         } else {
-            // TRƯỜNG HỢP 4: CÒN HÀNG -> NÚT MUA HIỆN LÊN
-            btnAction = `<button onclick="handlePurchase(${card.MaRaoBan}, ${card.GiaBan})" 
-                            class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded font-bold transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5">
-                            <i class="fas fa-shopping-cart mr-1"></i> Mua ngay
-                         </button>`;
+            btnAction = `<button onclick="handlePurchase(${card.MaRaoBan}, ${card.GiaBan})" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded font-bold transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"><i class="fas fa-shopping-cart mr-1"></i> Mua ngay</button>`;
         }
 
         return `
             <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full card-hover-effect ${borderClass} ${opacityClass} relative">
-                
                 ${statusBadge}
-
                 <div class="relative cursor-pointer h-52 bg-gray-50 flex items-center justify-center p-2" onclick="fetchCardDetail(${card.MaRaoBan})">
-                    <img src="${card.HinhAnh || 'https://via.placeholder.com/400x300?text=No+Img'}" 
-                         class="max-w-full max-h-full object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105">
-                    
-                    <div class="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold shadow text-gray-600 border border-gray-200 uppercase tracking-wider">
-                        ${card.TinhTrang || 'Mới'}
-                    </div>
+                    <img src="${card.HinhAnh || 'https://via.placeholder.com/400x300?text=No+Img'}" class="max-w-full max-h-full object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105">
+                    <div class="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold shadow text-gray-600 border border-gray-200 uppercase tracking-wider">${card.TinhTrang || 'Mới'}</div>
                 </div>
-
                 <div class="p-4 flex flex-col flex-grow">
                     <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-1">${card.TenTroChoi || 'Trading Card'}</p>
-                    
-                    <h3 class="text-base font-bold text-gray-800 leading-snug mb-3 line-clamp-2 cursor-pointer hover:text-blue-600 transition" 
-                        onclick="fetchCardDetail(${card.MaRaoBan})">
-                        ${card.TenThe}
-                    </h3>
-                    
+                    <h3 class="text-base font-bold text-gray-800 leading-snug mb-3 line-clamp-2 cursor-pointer hover:text-blue-600 transition" onclick="fetchCardDetail(${card.MaRaoBan})">${card.TenThe}</h3>
                     <div class="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
                         <div class="flex flex-col">
                             <span class="text-xs text-gray-400 font-medium">Giá bán</span>
@@ -263,7 +231,6 @@ function renderCardList(cards) {
                         </div>
                         <div>${btnAction}</div>
                     </div>
-                    
                     <div class="mt-2 flex justify-between items-center text-xs text-gray-400">
                         <span><i class="fas fa-user-circle mr-1"></i> ${card.TenNguoiDung}</span>
                         <span>${new Date(card.NgayDang).toLocaleDateString('vi-VN')}</span>
@@ -280,30 +247,18 @@ function renderBuyingList(items) {
         const priceDisplay = item.GiaMongMuon > 0 ? formatCurrency(item.GiaMongMuon) : "Thỏa thuận";
         const isOwner = Number(item.MaNguoiDung) === CONFIG.USER_ID;
 
-        // [FIX] Logic hiển thị nút liên hệ
         let contactBtn;
-
         if (isOwner) {
-            // Trường hợp 1: Tin của chính mình
             contactBtn = `<span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">Tin của bạn</span>`;
         } else if (item.DaLienHe === 1) {
-            // Trường hợp 2: Đã liên hệ rồi -> Hiện nút Disable
-            contactBtn = `<button disabled class="text-xs border border-orange-300 text-orange-600 bg-orange-50 px-2 py-1 rounded cursor-not-allowed font-medium">
-                            <i class="fas fa-clock"></i> Đang chờ xử lý
-                          </button>`;
+            contactBtn = `<button disabled class="text-xs border border-orange-300 text-orange-600 bg-orange-50 px-2 py-1 rounded cursor-not-allowed font-medium"><i class="fas fa-clock"></i> Đang chờ xử lý</button>`;
         } else {
-            // Trường hợp 3: Chưa liên hệ -> Hiện nút bấm
-            contactBtn = `<button onclick="handleContactRequest(${item.MaCanMua})" class="text-xs border border-cyan-500 text-cyan-600 px-2 py-1 rounded hover:bg-cyan-50 font-medium transition">
-                            <i class="fas fa-handshake"></i> Liên hệ bán
-                          </button>`;
+            contactBtn = `<button onclick="handleContactRequest(${item.MaCanMua})" class="text-xs border border-cyan-500 text-cyan-600 px-2 py-1 rounded hover:bg-cyan-50 font-medium transition"><i class="fas fa-handshake"></i> Liên hệ bán</button>`;
         }
 
+        let actionArea = '';
         if (isOwner) {
-            // Nút tắt tin
-            const closeBtn = `<button onclick="closeMyWant(${item.MaCanMua})" class="text-xs bg-gray-200 hover:bg-red-100 hover:text-red-600 text-gray-600 px-2 py-1 rounded ml-2" title="Đã mua được/Hủy tìm">
-                        <i class="fas fa-times-circle"></i> Đóng tin
-                      </button>`;
-
+            const closeBtn = `<button onclick="closeMyWant(${item.MaCanMua})" class="text-xs bg-gray-200 hover:bg-red-100 hover:text-red-600 text-gray-600 px-2 py-1 rounded ml-2" title="Đã mua được/Hủy tìm"><i class="fas fa-times-circle"></i> Đóng tin</button>`;
             actionArea = `<span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">Tin của bạn</span> ${closeBtn}`;
         }
 
@@ -316,11 +271,9 @@ function renderBuyingList(items) {
                 <div class="p-3 flex flex-col flex-grow">
                     <h5 class="text-md font-bold text-gray-800 line-clamp-2 mb-1">${item.TieuDe}</h5>
                     <p class="text-xs text-gray-500 mb-2"><i class="fas fa-user-circle"></i> ${item.TenNguoiDung}</p>
-                    
                     <div class="bg-gray-50 p-2 rounded mb-3 flex-grow border border-gray-100">
                         <p class="text-xs text-gray-700 line-clamp-3">${item.MoTa || 'Không có mô tả chi tiết.'}</p>
                     </div>
-                    
                     <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100">
                         <span class="text-lg font-bold text-cyan-700">${priceDisplay}</span>
                         ${contactBtn}
@@ -343,10 +296,7 @@ function renderMatches(matches) {
             <div class="bg-white p-3 rounded border-l-4 border-green-500 shadow-sm flex justify-between items-center">
                 <div>
                     <p class="text-sm text-gray-600">Bạn cần: <strong class="text-gray-800">${m.TenThe}</strong> (${formatCurrency(m.GiaMongMuon)})</p>
-                    <p class="text-sm mt-1">
-                        <i class="fas fa-arrow-right text-green-500 mr-1"></i> 
-                        Có người bán: <span class="text-green-600 font-bold text-lg">${formatCurrency(m.GiaNguoiBan)}</span>
-                    </p>
+                    <p class="text-sm mt-1"><i class="fas fa-arrow-right text-green-500 mr-1"></i> Có người bán: <span class="text-green-600 font-bold text-lg">${formatCurrency(m.GiaNguoiBan)}</span></p>
                 </div>
                 <button onclick="fetchCardDetail(${m.MaRaoBan})" class="bg-green-100 text-green-700 px-3 py-1 rounded hover:bg-green-200 text-sm font-bold">Xem Ngay</button>
             </div>
@@ -398,15 +348,12 @@ function renderCardDetailContent(card) {
  * ====================================================================
  */
 
-
-
 // 1. Xử lý Mua Hàng (Transaction)
 window.handlePurchase = async function (maRaoBan, giaBan) {
     if (event) event.stopPropagation();
     if (!CONFIG.USER_ID) return alert("Vui lòng đăng nhập!");
     if (!confirm("Bạn muốn mua thẻ này? Admin sẽ là trung gian giao dịch.")) return;
 
-    // Loading State
     const btn = event.target;
     const originalText = btn.innerText;
     btn.disabled = true;
@@ -424,9 +371,13 @@ window.handlePurchase = async function (maRaoBan, giaBan) {
         });
 
         if (data.success) {
-            showTransactionModal(data.adminInfo, `MUA DH${data.orderId}`);
-            ModalManager.closeAll();
-            // Ẩn thẻ khỏi list hoặc reload
+            // === SỬA TẠI ĐÂY ===
+            ModalManager.closeAll(); // 1. Đóng các modal cũ (như modal chi tiết thẻ) TRƯỚC
+            
+            // 2. Sau đó mới hiện Modal giao dịch lên
+            showTransactionModal(data.adminInfo, `MUA DH${data.orderId}`); 
+            
+            // Tải lại danh sách
             fetchCards(DOM.searchInput.value, DOM.gameFilter.value);
         } else {
             alert("THÔNG BÁO: " + data.error);
@@ -443,13 +394,10 @@ window.handlePurchase = async function (maRaoBan, giaBan) {
 };
 
 // 2. Xử lý Liên Hệ (Bán cho người cần mua)
-// script.js
-
 async function handleContactRequest(maCanMua) {
-    if (event) event.stopPropagation(); // Ngăn sự kiện click lan ra ngoài
+    if (event) event.stopPropagation();
 
-    // Hiệu ứng loading cho nút bấm
-    const btn = event.currentTarget; // Lấy chính xác cái nút đang bấm
+    const btn = event.currentTarget;
     const originalContent = btn.innerHTML;
     btn.disabled = true;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Xử lý...';
@@ -465,24 +413,16 @@ async function handleContactRequest(maCanMua) {
         });
 
         if (data.success) {
-            // Thành công: Hiện hướng dẫn GD
             showTransactionModal(data.adminInfo, `BAN THE YEU CAU #${maCanMua}`);
-
-            // Cập nhật lại giao diện nút ngay lập tức thành "Đang chờ xử lý"
             btn.className = "text-xs border border-orange-300 text-orange-600 bg-orange-50 px-2 py-1 rounded cursor-not-allowed";
             btn.innerHTML = '<i class="fas fa-clock"></i> Đang chờ xử lý';
-
         } else {
-            // Thất bại (Đã gửi rồi): Hiện thông báo từ backend
-            // data.error chính là câu "Bạn đã gửi yêu cầu này rồi..."
             alert("THÔNG BÁO: " + data.error);
         }
     } catch (err) {
         console.error(err);
         alert("Lỗi kết nối hệ thống");
     } finally {
-        // Nếu thất bại thì mở lại nút, nếu thành công thì giữ nguyên trạng thái disabled (nếu muốn)
-        // Ở đây ta mở lại nếu có lỗi, còn thành công thì đã đổi giao diện ở trên rồi
         if (!data?.success) {
             btn.disabled = false;
             btn.innerHTML = originalContent;
@@ -490,16 +430,27 @@ async function handleContactRequest(maCanMua) {
     }
 }
 
+// 3. Hiển thị Modal Zalo Đơn giản
 function showTransactionModal(adminInfo, contentMsg) {
     if (!DOM.modalTrans) return;
-    DOM.transZalo.textContent = adminInfo.zalo;
-    DOM.transBankName.textContent = adminInfo.bankName;
-    DOM.transBankNum.textContent = adminInfo.bankAccount;
-    DOM.transContent.textContent = contentMsg;
+
+    // Tự động điền số nếu server quên gửi
+    let zaloNumber = "0327734880"; // Số của bạn
+    if (adminInfo && adminInfo.zalo) {
+        zaloNumber = adminInfo.zalo;
+    }
+
+    if (DOM.btnZaloContact && DOM.txtZaloPhone) {
+        DOM.btnZaloContact.href = `https://zalo.me/${zaloNumber}`;
+        DOM.txtZaloPhone.textContent = zaloNumber;
+        DOM.btnZaloContact.classList.remove('hidden');
+    }
+    
+    if (DOM.transContent) DOM.transContent.textContent = contentMsg;
     ModalManager.show(DOM.modalTrans);
 }
 
-// 3. Xử lý Đăng tin cần mua
+// 4. Xử lý Đăng tin cần mua
 window.openWantModal = () => {
     if (!CONFIG.USER_ID) return alert("Vui lòng đăng nhập để đăng tin!");
     ModalManager.show(DOM.modalAddWant);
@@ -512,10 +463,10 @@ window.searchForWant = async () => {
     DOM.wantSearchResults.innerHTML = '<p class="text-gray-500 text-center p-2">Đang tìm...</p>';
 
     try {
-        // Prefer modal's game select; fall back to main filter if modal select not present
         const selectedGame = (DOM.wantGameFilter && DOM.wantGameFilter.value) ? DOM.wantGameFilter.value : (DOM.gameFilter ? DOM.gameFilter.value : '');
         const params = new URLSearchParams({ q: keyword });
         if (selectedGame) params.append('MaTroChoi', selectedGame);
+        
         const data = await fetchData(`${API.CARDS}/search?${params.toString()}`);
         if (!data || data.length === 0) {
             DOM.wantSearchResults.innerHTML = '<p class="text-red-500 text-center p-2">Không tìm thấy thẻ.</p>';
@@ -549,6 +500,7 @@ window.clearSelectedWant = () => {
     document.getElementById("wantMaThe").value = "";
     document.getElementById("selectedWantCard").classList.add("hidden");
 };
+
 // Form submit event
 if (DOM.formAddWant) {
     DOM.formAddWant.addEventListener("submit", async (e) => {
@@ -584,19 +536,18 @@ window.closeMyWant = async function(id) {
     if (!confirm("Bạn xác nhận đã mua được thẻ này (hoặc không tìm nữa)? Tin sẽ bị ẩn khỏi danh sách.")) return;
 
     try {
-        // Gọi API update (dùng chung API update của routes/timmua.js)
         const res = await fetchData(`${API.BUYING}/update/${id}`, {
             method: 'PUT',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ 
-                MaNguoiDung: CONFIG.USER_ID, // Gửi ID để xác thực quyền
-                DaKetThuc: 1 // Quan trọng: Đóng tin
+                MaNguoiDung: CONFIG.USER_ID, 
+                DaKetThuc: 1 
             })
         });
 
         if (res.success) {
             alert("Đã đóng tin tìm kiếm.");
-            fetchBuyingList(); // Tải lại danh sách
+            fetchBuyingList(); 
         } else {
             alert("Lỗi: " + res.error);
         }
@@ -618,7 +569,6 @@ async function fetchGames() {
             });
         }
 
-        // Populate modal-specific game select if present
         if (DOM.wantGameFilter) {
             DOM.wantGameFilter.innerHTML = '<option value="">-- Chọn Trò chơi --</option>';
             list.forEach(g => {

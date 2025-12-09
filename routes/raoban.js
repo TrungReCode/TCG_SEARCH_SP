@@ -67,50 +67,34 @@ router.post("/add", async (req, res) => {
 // ====================================================
 // 🔹 3. THÊM THẺ THỦ CÔNG + RAO BÁN (TRANSACTION)
 // ====================================================
-router.post("/add-custom", async (req, res) => {
-    const pool = await connectDB();
-    const transaction = new sql.Transaction(pool);
+router.post("/add", async (req, res) => {
+    // 1. Nhận thêm tham số HinhAnh từ body
+    const { MaNguoiDung, MaThe, Gia, TinhTrang, MoTa, HinhAnh } = req.body;
+
+    if (!MaNguoiDung || !MaThe) {
+        return res.status(400).json({ error: "Vui lòng chọn thẻ và đăng nhập." });
+    }
 
     try {
-        const { MaNguoiDung, MaTroChoi, TenThe, MoTaThe, GiaGoc, GiaBan, TinhTrang } = req.body;
-
-        if (!MaNguoiDung || !TenThe || !GiaBan)
-            return res.status(400).json({ success: false, error: "Thiếu dữ liệu đầu vào!" });
-
-        await transaction.begin();
-        const request = new sql.Request(transaction);
-
-        // 1️⃣ Thêm vào TheBai
-        const insertCard = await request
-            .input("MaTroChoi", sql.Int, MaTroChoi)
-            .input("TenThe", sql.NVarChar, TenThe)
-            .input("MoTaThe", sql.NVarChar, MoTaThe || "")
-            .input("GiaGoc", sql.Decimal(10, 2), GiaGoc || 0)
-            .query(`
-                INSERT INTO TheBai (MaTroChoi, TenThe, MoTa, Gia)
-                OUTPUT INSERTED.MaThe
-                VALUES (@MaTroChoi, @TenThe, @MoTaThe, @GiaGoc)
-            `);
-
-        const MaTheMoi = insertCard.recordset[0].MaThe;
-
-        // 2️⃣ Thêm vào TheRaoBan
-        await request
+        const pool = await connectDB();
+        
+        // 2. Thêm HinhAnh vào câu lệnh INSERT
+        await pool.request()
             .input("MaNguoiDung", sql.Int, MaNguoiDung)
-            .input("MaThe", sql.Int, MaTheMoi)
-            .input("GiaBan", sql.Decimal(10, 2), GiaBan)
-            .input("TinhTrang", sql.NVarChar, TinhTrang || "Mới")
+            .input("MaThe", sql.Int, MaThe)
+            .input("Gia", sql.Decimal(10, 2), Gia)
+            .input("TinhTrang", sql.NVarChar, TinhTrang)
+            .input("MoTa", sql.NVarChar, MoTa || "")
+            .input("HinhAnh", sql.NVarChar, HinhAnh || null) // Nếu rỗng thì lưu NULL
             .query(`
-                INSERT INTO TheRaoBan (MaNguoiDung, MaThe, Gia, TinhTrang)
-                VALUES (@MaNguoiDung, @MaThe, @GiaBan, @TinhTrang)
+                INSERT INTO TheRaoBan (MaNguoiDung, MaThe, Gia, TinhTrang, MoTa, HinhAnh)
+                VALUES (@MaNguoiDung, @MaThe, @Gia, @TinhTrang, @MoTa, @HinhAnh)
             `);
 
-        await transaction.commit();
-        res.json({ success: true, message: "Đã thêm thẻ mới và rao bán!" });
-
+        res.json({ success: true, message: "Đăng bán thành công!" });
     } catch (err) {
-        await transaction.rollback();
-        res.status(500).json({ success: false, error: err.message });
+        console.error(err);
+        res.status(500).json({ error: "Lỗi server" });
     }
 });
 
@@ -214,7 +198,8 @@ router.delete("/:id", async (req, res) => {
 
 
 // ====================================================
-// 🔹 6. TÌM KIẾM THẺ CỦA NGƯỜI KHÁC (ĐÃ CHỈNH SỬA)
+// 🔹 6. TÌM KIẾM THẺ CỦA NGƯỜI KHÁC (CÓ LOGIC ẢNH & ĐƠN HÀNG)
+// ====================================================
 router.get("/search-combined", async (req, res) => {
     try {
         const { keyword = "", maNguoiDung, maTroChoi } = req.query;
@@ -230,14 +215,17 @@ router.get("/search-combined", async (req, res) => {
         let query = `
             SELECT 
                 RB.MaRaoBan, RB.Gia AS GiaBan, RB.TinhTrang, RB.MoTa AS MoTaRaoBan, RB.NgayDang,
-                TB.MaThe, TB.TenThe, TB.HinhAnh, TB.Gia AS GiaGoc,
+                TB.MaThe, TB.TenThe, TB.Gia AS GiaGoc,
                 ND.MaNguoiDung, ND.TenNguoiDung,
                 TC.TenTroChoi,
                 
+                -- [QUAN TRỌNG] Logic lấy ảnh: Ưu tiên ảnh người bán up -> Ảnh gốc -> Placeholder
+                COALESCE(RB.HinhAnh, TB.HinhAnh, 'https://via.placeholder.com/300?text=No+Img') AS HinhAnh,
+
                 -- Kiểm tra xem người dùng hiện tại có phải chủ thẻ không
                 CASE WHEN RB.MaNguoiDung = @MaNguoiDung THEN 1 ELSE 0 END AS IsOwner,
 
-                -- [MỚI] Lấy trạng thái đơn hàng và ID người mua (nếu có đơn đang treo)
+                -- Lấy trạng thái đơn hàng và ID người mua (nếu có đơn đang treo)
                 DH.TrangThai AS TrangThaiDonHang,
                 DH.MaNguoiTao AS NguoiMuaId
 
@@ -246,7 +234,7 @@ router.get("/search-combined", async (req, res) => {
             JOIN NguoiDung ND ON RB.MaNguoiDung = ND.MaNguoiDung
             JOIN TroChoi TC ON TB.MaTroChoi = TC.MaTroChoi
             
-            -- [MỚI] JOIN với đơn hàng để lấy thông tin (Chỉ lấy đơn đang xử lý hoặc đã bán)
+            -- JOIN với đơn hàng để lấy thông tin (Chỉ lấy đơn đang xử lý hoặc đã bán)
             LEFT JOIN DonHang DH ON RB.MaRaoBan = DH.MaRaoBan 
                                  AND DH.TrangThai IN ('ChoXuLy', 'DaThanhToan', 'DangGiao')
 
@@ -256,11 +244,12 @@ router.get("/search-combined", async (req, res) => {
         const request = pool.request();
         request.input("MaNguoiDung", sql.Int, maNguoiDungInt);
 
-        // ... (các đoạn filter keyword, maTroChoi giữ nguyên) ...
+        // Filter Keyword
         if (keyword) {
             query += ` AND TB.TenThe LIKE @keyword`;
             request.input("keyword", sql.NVarChar, `%${keyword}%`);
         }
+        // Filter Game
         if (maTroChoi && !isNaN(parseInt(maTroChoi)) && parseInt(maTroChoi) > 0) {
             query += ` AND TB.MaTroChoi = @MaTroChoi`;
             request.input("MaTroChoi", sql.Int, parseInt(maTroChoi));
@@ -278,7 +267,7 @@ router.get("/search-combined", async (req, res) => {
 });
 
 // ====================================================
-// 🔹 7. LẤY CHI TIẾT THẺ RAO BÁN (ĐÃ BỔ SUNG TÊN TRÒ CHƠI)
+// 🔹 7. LẤY CHI TIẾT THẺ RAO BÁN (CÓ LOGIC ẢNH)
 // ====================================================
 router.get("/detail/:maRaoBan", async (req, res) => {
     try {
@@ -287,10 +276,15 @@ router.get("/detail/:maRaoBan", async (req, res) => {
         const result = await pool.request()
             .input("MaRaoBan", sql.Int, req.params.maRaoBan)
             .query(`
-                SELECT RB.MaRaoBan, RB.Gia AS GiaBan, RB.TinhTrang, RB.MoTa, RB.NgayDang,
-                       TB.MaThe, TB.TenThe, TB.HinhAnh, TB.MoTa AS MoTaThe, TB.Gia AS GiaGoc,
-                       ND.MaNguoiDung, ND.TenNguoiDung,
-                       TC.TenTroChoi
+                SELECT 
+                    RB.MaRaoBan, RB.Gia AS GiaBan, RB.TinhTrang, RB.MoTa AS MoTaRaoBan, RB.NgayDang,
+                    TB.MaThe, TB.TenThe, TB.MoTa AS MoTaThe, TB.Gia AS GiaGoc,
+                    ND.MaNguoiDung, ND.TenNguoiDung,
+                    TC.TenTroChoi,
+                    
+                    -- [QUAN TRỌNG] Logic lấy ảnh tương tự như search
+                    COALESCE(RB.HinhAnh, TB.HinhAnh, 'https://via.placeholder.com/300?text=No+Img') AS HinhAnh
+
                 FROM TheRaoBan RB
                 JOIN TheBai TB ON RB.MaThe = TB.MaThe
                 JOIN NguoiDung ND ON RB.MaNguoiDung = ND.MaNguoiDung

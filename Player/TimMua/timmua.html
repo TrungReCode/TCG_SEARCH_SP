@@ -74,7 +74,6 @@
                 <div class="col-span-full text-center py-10 text-gray-500">Đang tải tin cần mua...</div>
             </div>
         </div>
-
     </div>
 
     <div id="cardDetailModal"
@@ -172,43 +171,35 @@
     <div id="modalTransaction"
         class="fixed inset-0 bg-gray-900 bg-opacity-80 hidden items-center justify-center p-4 z-[60]"
         onclick="if(event.target.id === 'modalTransaction') closeModal()">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-md p-6 relative animate-fade-in">
+
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 relative animate-fade-in text-center">
 
             <button onclick="closeModal()" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition">
                 <i class="fas fa-times text-xl"></i>
             </button>
 
-            <div class="text-center mb-6">
+            <div class="mb-4">
                 <div
-                    class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto mb-4 text-3xl">
+                    class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl shadow-sm">
                     <i class="fas fa-check"></i>
                 </div>
-                <h3 class="text-xl font-bold text-gray-800">Yêu cầu đã được ghi nhận!</h3>
-                <p class="text-sm text-gray-500 mt-2">Vui lòng thực hiện bước tiếp theo để hoàn tất qua Trung gian
-                    Admin.</p>
             </div>
 
-            <div class="bg-blue-50 border border-blue-200 rounded-lg p-4 mb-6">
-                <h4 class="font-bold text-blue-800 mb-2 border-b border-blue-200 pb-2"><i
-                        class="fas fa-info-circle"></i> Thông tin Admin</h4>
-                <div class="space-y-2 text-sm text-gray-700">
-                    <p><strong>Zalo hỗ trợ:</strong> <span id="transZalo"
-                            class="text-lg font-bold text-blue-600 select-all"></span></p>
-                    <p><strong>Ngân hàng:</strong> <span id="transBankName"></span></p>
-                    <p><strong>Số tài khoản:</strong> <span id="transBankNum"
-                            class="font-mono font-bold select-all bg-white px-1 rounded border"></span></p>
-                </div>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Đã gửi yêu cầu!</h3>
+            <p class="text-sm text-gray-500 mb-6">Vui lòng nhắn tin Zalo cho Admin để hoàn tất giao dịch.</p>
+
+            <a id="btnZaloContact" href="#" target="_blank"
+                class="block w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-full shadow-lg transition transform hover:-translate-y-1 mb-4 flex items-center justify-center gap-2">
+                <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Icon_of_Zalo.svg/1200px-Icon_of_Zalo.svg.png"
+                    class="w-6 h-6 bg-white rounded-full p-0.5">
+                <span>Chat Zalo: <span id="txtZaloPhone">...</span></span>
+            </a>
+
+            <div class="bg-gray-50 border border-gray-100 rounded-lg p-3">
+                <p class="text-xs text-gray-400 uppercase font-semibold">Mã giao dịch</p>
+                <p id="transContent" class="text-lg font-bold text-gray-700 select-all font-mono"></p>
             </div>
 
-            <div class="bg-yellow-50 border border-yellow-200 rounded p-3 text-sm text-yellow-800 mb-4">
-                <strong>Nội dung chuyển khoản/nhắn tin:</strong><br>
-                <span id="transContent" class="font-bold text-lg select-all"></span>
-            </div>
-
-            <button onclick="closeModal()"
-                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 rounded-lg transition shadow-lg">
-                Đã hiểu, tôi sẽ liên hệ ngay
-            </button>
         </div>
     </div>
 

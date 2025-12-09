@@ -5,9 +5,7 @@ const { sql, connectDB } = require("../db");
 
 // THÔNG TIN ADMIN (Cấu hình cứng hoặc lấy từ DB)
 const ADMIN_CONTACT = {
-    zalo: "0987.654.321",
-    bankName: "Vietcombank",
-    bankAccount: "1234567890 - NGUYEN VAN ADMIN"
+    zalo: "0327.734.880"
 };
 
 // 1. TẠO YÊU CẦU MUA (User click nút Mua ở bài Rao Bán)
@@ -42,7 +40,7 @@ router.post("/create-buy", async (req, res) => {
             await transaction.rollback();
             return res.json({ 
                 success: false, 
-                error: "Rất tiếc, thẻ này vừa có người khác đặt mua trước bạn 1 giây!" 
+                error: "Đã có thao tác đặt mua trước!"
             });
         }
 

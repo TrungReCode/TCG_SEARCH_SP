@@ -245,7 +245,7 @@ function renderOrderTable(data) {
                 </div>
             </div>`;
 
-        const price = item.GiaHienThi ? new Intl.NumberFormat('vi-VN').format(item.GiaHienThi) + ' đ' : 'Thỏa thuận';
+        const price = item.GiaHienThi ? new Intl.NumberFormat('en-US').format(item.GiaHienThi) + ' $' : 'Thỏa thuận';
 
         let statusClass = {
             'ChoXuLy': 'bg-yellow-100 text-yellow-800 border-yellow-200',
