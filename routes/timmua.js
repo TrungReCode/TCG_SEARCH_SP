@@ -141,20 +141,49 @@ router.put("/update/:id", async (req, res) => {
 // =========================================================================
 // 4. XÓA TIN (DELETE /:id)
 // =========================================================================
+// routes/timmua.js
+
 router.delete("/:id", async (req, res) => {
+    const id = req.params.id;
+    const pool = await connectDB();
+    const transaction = new sql.Transaction(pool);
+
     try {
-        const pool = await connectDB();
-        const result = await pool.request()
-            .input("MaCanMua", sql.Int, req.params.id)
-            .query("DELETE FROM TheCanMua WHERE MaCanMua = @MaCanMua");
+        await transaction.begin();
+        const request = new sql.Request(transaction);
+
+        // 1. KIỂM TRA
+        const checkOrder = await request
+            .input("MaCanMua", sql.Int, id)
+            .query(`
+                SELECT TOP 1 MaDonHang FROM DonHang 
+                WHERE MaCanMua = @MaCanMua 
+                AND TrangThai IN ('ChoXuLy', 'DangGiao')
+            `);
+            
+        if (checkOrder.recordset.length > 0) {
+            await transaction.rollback();
+            return res.status(400).json({ error: "Không thể xóa! Tin này đang có người liên hệ bán." });
+        }
+
+        // 2. DỌN DẸP LỊCH SỬ (Khắc phục lỗi 500)
+        await request.query("DELETE FROM DonHang WHERE MaCanMua = @MaCanMua");
+
+        // 3. XÓA TIN
+        const result = await request.query("DELETE FROM TheCanMua WHERE MaCanMua = @MaCanMua");
 
         if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ error: "Tin không tồn tại hoặc đã bị xóa" });
+            await transaction.rollback();
+            return res.status(404).json({ error: "Tin không tồn tại." });
         }
-        res.json({ success: true, message: "Đã xóa tin thành công" });
+
+        await transaction.commit();
+        res.json({ success: true, message: "Đã xóa tin tìm mua thành công!" });
+
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi server khi xóa" });
+        if (transaction._aborted === false) await transaction.rollback();
+        console.error("Lỗi xóa tin mua:", err);
+        res.status(500).json({ error: "Lỗi server: " + err.message });
     }
 });
 
@@ -162,48 +191,55 @@ router.delete("/:id", async (req, res) => {
 // 5. CHỨC NĂNG MATCHING (KHỚP LỆNH)
 // Tìm những người đang BÁN thẻ mà User này đang CẦN MUA
 // =========================================================================
+
 router.get("/match/:MaNguoiDung", async (req, res) => {
     const currentUserId = req.params.MaNguoiDung;
 
     try {
         const pool = await connectDB();
         
-        // Query logic:
-        // Lấy Tin Mua của User -> JOIN với Tin Bán của người khác qua MaThe
+        //Match cả ID lẫn Tên
+        const query = `
+            SELECT 
+                cm.MaCanMua,
+                cm.TieuDe AS TieuDeCanMua,
+                cm.GiaMongMuon,
+                rb.MaRaoBan,
+                rb.Gia AS GiaNguoiBan,
+                rb.TinhTrang,
+                rb.MaNguoiDung AS IdNguoiBan,
+                nd_ban.TenNguoiDung AS TenNguoiBan,
+                tb.TenThe,
+                tb.HinhAnh AS AnhTheGoc,
+                tb.MaThe
+
+            FROM TheCanMua cm
+            -- JOIN VỚI BẢNG THẺ ĐANG BÁN
+            INNER JOIN TheRaoBan rb ON 1=1 -- Dùng 1=1 để xử lý logic trong ON hoặc WHERE
+            INNER JOIN TheBai tb ON rb.MaThe = tb.MaThe
+            INNER JOIN NguoiDung nd_ban ON rb.MaNguoiDung = nd_ban.MaNguoiDung
+            
+            WHERE 
+                cm.MaNguoiDung = @CurrentUserId  
+                AND cm.DaKetThuc = 0
+                AND rb.MaNguoiDung != @CurrentUserId
+                
+                -- [FIX LỖI 2] LOGIC MATCHING THÔNG MINH
+                AND (
+                    -- Ưu tiên 1: Khớp chính xác ID thẻ (nếu tin mua có chọn thẻ)
+                    (cm.MaThe IS NOT NULL AND cm.MaThe = rb.MaThe)
+                    OR
+                    -- Ưu tiên 2: Khớp tên (nếu tin mua ko chọn thẻ mà nhập tay)
+                    -- Tìm xem Tiêu đề tin mua có CHỨA tên thẻ đang bán không
+                    (cm.MaThe IS NULL AND cm.TieuDe LIKE N'%' + tb.TenThe + N'%')
+                )
+            
+            ORDER BY rb.NgayDang DESC
+        `;
+
         const result = await pool.request()
             .input("CurrentUserId", sql.Int, currentUserId)
-            .query(`
-                SELECT 
-                    -- Thông tin thẻ cần mua (Của User hiện tại)
-                    cm.MaCanMua,
-                    cm.TieuDe AS TieuDeCanMua,
-                    cm.GiaMongMuon,
-                    
-                    -- Thông tin thẻ tìm thấy (Đang được bán bởi người khác)
-                    rb.MaRaoBan,
-                    rb.Gia AS GiaNguoiBan,
-                    rb.TinhTrang,
-                    rb.MaNguoiDung AS IdNguoiBan,
-                    nd_ban.TenNguoiDung AS TenNguoiBan,
-                    
-                    -- Thông tin chung về thẻ
-                    tb.TenThe,
-                    tb.HinhAnh AS AnhTheGoc,
-                    tb.MaThe
-
-                FROM TheCanMua cm
-                -- Chỉ match những tin có chỉ định MaThe cụ thể
-                INNER JOIN TheRaoBan rb ON cm.MaThe = rb.MaThe 
-                INNER JOIN TheBai tb ON cm.MaThe = tb.MaThe
-                INNER JOIN NguoiDung nd_ban ON rb.MaNguoiDung = nd_ban.MaNguoiDung
-                
-                WHERE 
-                    cm.MaNguoiDung = @CurrentUserId  -- Của tôi
-                    AND cm.DaKetThuc = 0             -- Tôi vẫn đang tìm
-                    AND rb.MaNguoiDung != @CurrentUserId -- Không tự mua của chính mình
-                
-                ORDER BY rb.NgayDang DESC
-            `);
+            .query(query);
 
         res.json({
             success: true,
@@ -213,7 +249,7 @@ router.get("/match/:MaNguoiDung", async (req, res) => {
 
     } catch (err) {
         console.error("Lỗi Matching:", err);
-        res.status(500).json({ error: "Lỗi server khi tìm kiếm khớp lệnh" });
+        res.status(500).json({ error: "Lỗi server" });
     }
 });
 

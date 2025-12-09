@@ -199,7 +199,18 @@ function renderContentTable(data) {
 }
 
 function renderOrderTable(data) {
-    // Render Header cho Đơn hàng
+    if (!Array.isArray(data)) {
+        console.error("Dữ liệu không hợp lệ:", data);
+        DOM.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 py-10">Lỗi dữ liệu: ${data.error || "Không xác định"}</td></tr>`;
+        return;
+    }
+
+    if (data.length === 0) {
+        DOM.tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-500">Chưa có giao dịch nào</td></tr>';
+        return;
+    }
+
+    // Render Header
     document.querySelector('thead').innerHTML = `
         <tr>
             <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Mã GD</th>
@@ -211,52 +222,60 @@ function renderOrderTable(data) {
         </tr>
     `;
 
-    if (data.length === 0) {
-        DOM.tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-500">Chưa có giao dịch nào</td></tr>';
-        return;
-    }
-
     DOM.tableBody.innerHTML = data.map(item => {
         const isBan = item.LoaiGiaoDich === 'BAN';
-        let typeBadge = isBan 
+        const typeBadge = isBan 
             ? '<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">Bán Thẻ</span>'
             : '<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Mua Thẻ</span>';
             
-        let detailHtml = isBan 
-            ? `<div class="text-sm"><strong>${item.TenNguoiLienHe}</strong> muốn bán cho <strong>${item.TenNguoiCanMua}</strong><br><span class="text-xs text-gray-500">Tin: ${item.TieuDeTinMua}</span></div>`
-            : `<div class="text-sm"><strong>${item.TenNguoiLienHe}</strong> đặt mua từ <strong>${item.TenChuTheRaoBan}</strong><br><span class="text-xs text-gray-500">Thẻ ID: ${item.MaRaoBan}</span></div>`;
+        // Dữ liệu đã được Backend xử lý sẵn (TenTheHienThi, HinhAnhHienThi)
+        const cardName = item.TenTheHienThi || 'Không có tên';
+        const cardImg = item.HinhAnhHienThi || 'https://via.placeholder.com/60x80?text=No+Img';
+        const doiTac = item.TenDoiTac || 'Ẩn danh';
 
-        let price = isBan 
-            ? (item.GiaMongMuon ? formatMoney(item.GiaMongMuon) : 'Thỏa thuận')
-            : formatMoney(item.GiaRaoBan);
+        const detailHtml = `
+            <div class="flex items-start gap-3">
+                <img src="${cardImg}" class="w-12 h-16 object-cover rounded border bg-white shadow-sm">
+                <div class="text-sm">
+                    <div class="font-bold text-gray-800">${item.TenNguoiLienHe}</div>
+                    <div class="text-xs text-gray-500">
+                        <i class="fas fa-arrow-right mx-1"></i> ${isBan ? 'Bán cho' : 'Mua của'}: <strong>${doiTac}</strong>
+                    </div>
+                    <div class="text-xs text-blue-600 font-semibold mt-1 truncate w-40" title="${cardName}">${cardName}</div>
+                </div>
+            </div>`;
+
+        const price = item.GiaHienThi ? new Intl.NumberFormat('vi-VN').format(item.GiaHienThi) + ' đ' : 'Thỏa thuận';
 
         let statusClass = {
-            'ChoXuLy': 'bg-yellow-100 text-yellow-800',
-            'DangGiao': 'bg-blue-100 text-blue-800',
-            'HoanTat': 'bg-green-100 text-green-800',
-            'Huy': 'bg-gray-100 text-gray-500'
+            'ChoXuLy': 'bg-yellow-100 text-yellow-800 border-yellow-200',
+            'DangGiao': 'bg-blue-100 text-blue-800 border-blue-200',
+            'HoanTat': 'bg-green-100 text-green-800 border-green-200',
+            'Huy': 'bg-gray-100 text-gray-500 border-gray-200'
         }[item.TrangThai] || 'bg-gray-100';
 
         let actionBtns = '';
         if(item.TrangThai === 'ChoXuLy') {
             actionBtns = `
-                <button onclick="window.updateStatus(${item.MaDonHang}, 'DangGiao')" class="bg-blue-500 text-white px-2 py-1 rounded text-xs mb-1 hover:bg-blue-600 block w-full">Duyệt</button>
-                <button onclick="window.updateStatus(${item.MaDonHang}, 'Huy')" class="bg-red-100 text-red-600 px-2 py-1 rounded text-xs hover:bg-red-200 block w-full">Hủy</button>
+                <button onclick="window.updateStatus(${item.MaDonHang}, 'DangGiao')" class="bg-blue-500 text-white px-2 py-1 rounded text-xs mb-1 hover:bg-blue-600 w-full shadow-sm">Duyệt</button>
+                <button onclick="window.updateStatus(${item.MaDonHang}, 'Huy')" class="bg-white border border-red-200 text-red-500 px-2 py-1 rounded text-xs hover:bg-red-50 w-full">Hủy</button>
             `;
         } else if (item.TrangThai === 'DangGiao') {
             actionBtns = `
-                <button onclick="window.updateStatus(${item.MaDonHang}, 'HoanTat')" class="bg-green-500 text-white px-2 py-1 rounded text-xs mb-1 hover:bg-green-600 block w-full">Hoàn tất</button>
-                <button onclick="window.updateStatus(${item.MaDonHang}, 'Huy')" class="bg-gray-200 text-gray-600 px-2 py-1 rounded text-xs hover:bg-gray-300 block w-full">Hủy</button>
+                <button onclick="window.updateStatus(${item.MaDonHang}, 'HoanTat')" class="bg-green-600 text-white px-2 py-1 rounded text-xs mb-1 hover:bg-green-700 w-full shadow-sm">Hoàn tất</button>
+                <button onclick="window.updateStatus(${item.MaDonHang}, 'Huy')" class="text-xs text-gray-400 hover:text-red-500 underline w-full">Hủy bỏ</button>
             `;
+        } else {
+            actionBtns = '<span class="text-gray-400 text-xs italic">Đã đóng</span>';
         }
 
         return `
-            <tr class="hover:bg-gray-50 border-b border-gray-200">
-                <td class="px-5 py-4 font-mono text-sm text-gray-500">#${item.MaDonHang}</td>
+            <tr class="hover:bg-gray-50 border-b border-gray-200 transition">
+                <td class="px-5 py-4 font-mono text-xs text-gray-500">#${item.MaDonHang}</td>
                 <td class="px-5 py-4">${typeBadge}</td>
                 <td class="px-5 py-4">${detailHtml}</td>
                 <td class="px-5 py-4 font-bold text-gray-800">${price}</td>
-                <td class="px-5 py-4"><span class="${statusClass} px-2 py-1 rounded-full text-xs font-bold">${item.TrangThai}</span></td>
+                <td class="px-5 py-4"><span class="${statusClass} border px-2 py-1 rounded-full text-xs font-bold shadow-sm">${item.TrangThai}</span></td>
                 <td class="px-5 py-4 text-center"><div class="w-20 mx-auto">${actionBtns}</div></td>
             </tr>
         `;

@@ -133,7 +133,7 @@ async function fetchBuyingList() {
         // [FIX] Truyền ID người dùng lên để server check xem đã liên hệ chưa
         const url = `${API.BUYING}/list?maNguoiDung=${CONFIG.USER_ID}`;
         const data = await fetchData(url);
-        
+
         if (!data || data.length === 0) {
             DOM.buyingList.innerHTML = '<p class="col-span-full text-center text-gray-400 italic">Chưa có tin cần mua nào.</p>';
             return;
@@ -151,7 +151,7 @@ async function checkMatches() {
 
     try {
         const data = await fetchData(`${API.BUYING}/match/${CONFIG.USER_ID}`);
-        
+
         if (data.success && data.matches && data.matches.length > 0) {
             renderMatches(data.matches);
         } else {
@@ -163,7 +163,7 @@ async function checkMatches() {
 }
 
 // 4. Chi tiết thẻ
-window.fetchCardDetail = async function(maRaoBan) {
+window.fetchCardDetail = async function (maRaoBan) {
     if (!DOM.cardDetails) return;
     ModalManager.show(DOM.modalDetail);
     DOM.cardDetails.innerHTML = '<p class="text-center text-blue-500 py-10"><i class="fas fa-spinner fa-spin"></i> Đang tải...</p>';
@@ -189,7 +189,7 @@ window.fetchCardDetail = async function(maRaoBan) {
 function renderCardList(cards) {
     DOM.cardList.innerHTML = cards.map(card => {
         if (!card.MaRaoBan) return '';
-        
+
         const isOwner = Number(card.MaNguoiDung) === CONFIG.USER_ID;
         // Kiểm tra xem có đơn hàng đang treo không
         const hasActiveOrder = card.TrangThaiDonHang && ['ChoXuLy', 'DaThanhToan', 'DangGiao'].includes(card.TrangThaiDonHang);
@@ -206,7 +206,7 @@ function renderCardList(cards) {
             // TRƯỜNG HỢP 1: THẺ CỦA MÌNH
             borderClass = 'border-2 border-yellow-400 ring-2 ring-yellow-50';
             btnAction = `<span class="text-xs font-bold text-yellow-700 bg-yellow-100 px-3 py-1.5 rounded-full">Thẻ của bạn</span>`;
-            
+
             if (hasActiveOrder) {
                 statusBadge = `<div class="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold shadow animate-pulse">Khách đã đặt</div>`;
             }
@@ -279,14 +279,14 @@ function renderBuyingList(items) {
         const imgSrc = item.HinhAnhHienThi || 'https://via.placeholder.com/300x400?text=Can+Mua';
         const priceDisplay = item.GiaMongMuon > 0 ? formatCurrency(item.GiaMongMuon) : "Thỏa thuận";
         const isOwner = Number(item.MaNguoiDung) === CONFIG.USER_ID;
-        
+
         // [FIX] Logic hiển thị nút liên hệ
         let contactBtn;
-        
+
         if (isOwner) {
             // Trường hợp 1: Tin của chính mình
             contactBtn = `<span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">Tin của bạn</span>`;
-        } else if (item.DaLienHe === 1) { 
+        } else if (item.DaLienHe === 1) {
             // Trường hợp 2: Đã liên hệ rồi -> Hiện nút Disable
             contactBtn = `<button disabled class="text-xs border border-orange-300 text-orange-600 bg-orange-50 px-2 py-1 rounded cursor-not-allowed font-medium">
                             <i class="fas fa-clock"></i> Đang chờ xử lý
@@ -296,6 +296,15 @@ function renderBuyingList(items) {
             contactBtn = `<button onclick="handleContactRequest(${item.MaCanMua})" class="text-xs border border-cyan-500 text-cyan-600 px-2 py-1 rounded hover:bg-cyan-50 font-medium transition">
                             <i class="fas fa-handshake"></i> Liên hệ bán
                           </button>`;
+        }
+
+        if (isOwner) {
+            // Nút tắt tin
+            const closeBtn = `<button onclick="closeMyWant(${item.MaCanMua})" class="text-xs bg-gray-200 hover:bg-red-100 hover:text-red-600 text-gray-600 px-2 py-1 rounded ml-2" title="Đã mua được/Hủy tìm">
+                        <i class="fas fa-times-circle"></i> Đóng tin
+                      </button>`;
+
+            actionArea = `<span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">Tin của bạn</span> ${closeBtn}`;
         }
 
         return `
@@ -325,7 +334,7 @@ function renderBuyingList(items) {
 function renderMatches(matches) {
     const matchCount = document.getElementById("matchCount");
     const matchList = document.getElementById("matchList");
-    
+
     if (DOM.matchSection) DOM.matchSection.classList.remove("hidden");
     if (matchCount) matchCount.textContent = matches.length;
 
@@ -347,7 +356,7 @@ function renderMatches(matches) {
 
 function renderCardDetailContent(card) {
     const isOwner = Number(card.MaNguoiDung) === CONFIG.USER_ID;
-    const btnHtml = isOwner 
+    const btnHtml = isOwner
         ? `<button disabled class="w-full bg-gray-300 text-gray-600 font-bold py-3 rounded cursor-not-allowed">Đây là thẻ của bạn</button>`
         : `<button onclick="handlePurchase(${card.MaRaoBan}, ${card.GiaBan})" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 rounded shadow-lg transform transition hover:-translate-y-1">MUA NGAY VỚI GIÁ ${formatCurrency(card.GiaBan)}</button>`;
 
@@ -392,13 +401,13 @@ function renderCardDetailContent(card) {
 
 
 // 1. Xử lý Mua Hàng (Transaction)
-window.handlePurchase = async function(maRaoBan, giaBan) {
-    if(event) event.stopPropagation();
+window.handlePurchase = async function (maRaoBan, giaBan) {
+    if (event) event.stopPropagation();
     if (!CONFIG.USER_ID) return alert("Vui lòng đăng nhập!");
     if (!confirm("Bạn muốn mua thẻ này? Admin sẽ là trung gian giao dịch.")) return;
 
     // Loading State
-    const btn = event.target; 
+    const btn = event.target;
     const originalText = btn.innerText;
     btn.disabled = true;
     btn.innerText = "Đang xử lý...";
@@ -407,10 +416,10 @@ window.handlePurchase = async function(maRaoBan, giaBan) {
         const data = await fetchData(`${API.ORDERS}/create-buy`, {
             method: "POST",
             headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ 
-                MaNguoiDung: CONFIG.USER_ID, 
-                MaRaoBan: maRaoBan, 
-                Gia: giaBan 
+            body: JSON.stringify({
+                MaNguoiDung: CONFIG.USER_ID,
+                MaRaoBan: maRaoBan,
+                Gia: giaBan
             })
         });
 
@@ -418,7 +427,7 @@ window.handlePurchase = async function(maRaoBan, giaBan) {
             showTransactionModal(data.adminInfo, `MUA DH${data.orderId}`);
             ModalManager.closeAll();
             // Ẩn thẻ khỏi list hoặc reload
-            fetchCards(DOM.searchInput.value, DOM.gameFilter.value); 
+            fetchCards(DOM.searchInput.value, DOM.gameFilter.value);
         } else {
             alert("THÔNG BÁO: " + data.error);
             fetchCards(DOM.searchInput.value, DOM.gameFilter.value);
@@ -426,7 +435,7 @@ window.handlePurchase = async function(maRaoBan, giaBan) {
     } catch (err) {
         alert("Lỗi kết nối server");
     } finally {
-        if(btn) {
+        if (btn) {
             btn.disabled = false;
             btn.innerText = originalText;
         }
@@ -437,7 +446,7 @@ window.handlePurchase = async function(maRaoBan, giaBan) {
 // script.js
 
 async function handleContactRequest(maCanMua) {
-    if(event) event.stopPropagation(); // Ngăn sự kiện click lan ra ngoài
+    if (event) event.stopPropagation(); // Ngăn sự kiện click lan ra ngoài
 
     // Hiệu ứng loading cho nút bấm
     const btn = event.currentTarget; // Lấy chính xác cái nút đang bấm
@@ -458,11 +467,11 @@ async function handleContactRequest(maCanMua) {
         if (data.success) {
             // Thành công: Hiện hướng dẫn GD
             showTransactionModal(data.adminInfo, `BAN THE YEU CAU #${maCanMua}`);
-            
+
             // Cập nhật lại giao diện nút ngay lập tức thành "Đang chờ xử lý"
             btn.className = "text-xs border border-orange-300 text-orange-600 bg-orange-50 px-2 py-1 rounded cursor-not-allowed";
             btn.innerHTML = '<i class="fas fa-clock"></i> Đang chờ xử lý';
-            
+
         } else {
             // Thất bại (Đã gửi rồi): Hiện thông báo từ backend
             // data.error chính là câu "Bạn đã gửi yêu cầu này rồi..."
@@ -482,7 +491,7 @@ async function handleContactRequest(maCanMua) {
 }
 
 function showTransactionModal(adminInfo, contentMsg) {
-    if(!DOM.modalTrans) return;
+    if (!DOM.modalTrans) return;
     DOM.transZalo.textContent = adminInfo.zalo;
     DOM.transBankName.textContent = adminInfo.bankName;
     DOM.transBankNum.textContent = adminInfo.bankAccount;
@@ -540,7 +549,6 @@ window.clearSelectedWant = () => {
     document.getElementById("wantMaThe").value = "";
     document.getElementById("selectedWantCard").classList.add("hidden");
 };
-
 // Form submit event
 if (DOM.formAddWant) {
     DOM.formAddWant.addEventListener("submit", async (e) => {
@@ -572,12 +580,37 @@ if (DOM.formAddWant) {
     });
 }
 
+window.closeMyWant = async function(id) {
+    if (!confirm("Bạn xác nhận đã mua được thẻ này (hoặc không tìm nữa)? Tin sẽ bị ẩn khỏi danh sách.")) return;
+
+    try {
+        // Gọi API update (dùng chung API update của routes/timmua.js)
+        const res = await fetchData(`${API.BUYING}/update/${id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+                MaNguoiDung: CONFIG.USER_ID, // Gửi ID để xác thực quyền
+                DaKetThuc: 1 // Quan trọng: Đóng tin
+            })
+        });
+
+        if (res.success) {
+            alert("Đã đóng tin tìm kiếm.");
+            fetchBuyingList(); // Tải lại danh sách
+        } else {
+            alert("Lỗi: " + res.error);
+        }
+    } catch (err) {
+        alert("Lỗi kết nối");
+    }
+}
+
 // 4. Load Games & Search Debounce
 async function fetchGames() {
     try {
         const data = await fetchData(API.GAMES);
         const list = Array.isArray(data) ? data : (data.data || []);
-        
+
         if (DOM.gameFilter) {
             DOM.gameFilter.innerHTML = '<option value="">-- Tất cả Trò chơi --</option>';
             list.forEach(g => {

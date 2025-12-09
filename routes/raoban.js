@@ -165,33 +165,50 @@ router.put("/update/:maRaoBan", async (req, res) => {
     }
 });
 
-// ====================================================
-// 🔹 5. XÓA THẺ RAO BÁN
-// ====================================================
-router.delete("/delete/:maRaoBan", async (req, res) => {
+// routes/raoban.js
+
+router.delete("/:id", async (req, res) => {
+    const id = req.params.id;
+    const pool = await connectDB();
+    const transaction = new sql.Transaction(pool);
+
     try {
-        const { maNguoiDung } = req.body;
+        await transaction.begin();
+        const request = new sql.Request(transaction);
 
-        if (!maNguoiDung)
-            return res.status(400).json({ success: false, error: "Thiếu ID người dùng để xác thực!" });
-
-        const pool = await connectDB();
-
-        const result = await pool.request()
-            .input("MaRaoBan", sql.Int, req.params.maRaoBan)
-            .input("MaNguoiDung", sql.Int, maNguoiDung)
+        // 1. KIỂM TRA: Có đơn hàng nào đang treo không?
+        const checkOrder = await request
+            .input("MaRaoBan", sql.Int, id)
             .query(`
-                DELETE FROM TheRaoBan
-                WHERE MaRaoBan = @MaRaoBan AND MaNguoiDung = @MaNguoiDung
+                SELECT TOP 1 MaDonHang FROM DonHang 
+                WHERE MaRaoBan = @MaRaoBan 
+                AND TrangThai IN ('ChoXuLy', 'DangGiao')
             `);
+            
+        if (checkOrder.recordset.length > 0) {
+            await transaction.rollback();
+            return res.status(400).json({ error: "Không thể xóa! Thẻ này đang có người đặt mua hoặc đang giao dịch." });
+        }
 
-        if (result.rowsAffected[0] === 0)
-            return res.status(404).json({ success: false, message: "Không tìm thấy hoặc bạn không có quyền xóa!" });
+        // 2. DỌN DẸP: Xóa các đơn hàng cũ liên quan đến thẻ này trong bảng DonHang
+        // (Bước này khắc phục lỗi 500 Foreign Key)
+        await request.query("DELETE FROM DonHang WHERE MaRaoBan = @MaRaoBan");
 
-        res.json({ success: true, message: "Đã xóa khỏi danh sách rao bán!" });
+        // 3. XÓA CHÍNH: Xóa tin rao bán
+        const result = await request.query("DELETE FROM TheRaoBan WHERE MaRaoBan = @MaRaoBan");
+
+        if (result.rowsAffected[0] === 0) {
+            await transaction.rollback();
+            return res.status(404).json({ error: "Tin không tồn tại." });
+        }
+
+        await transaction.commit();
+        res.json({ success: true, message: "Đã xóa tin và lịch sử giao dịch liên quan!" });
 
     } catch (err) {
-        res.status(500).json({ success: false, error: err.message });
+        if (transaction._aborted === false) await transaction.rollback();
+        console.error("Lỗi xóa tin bán:", err);
+        res.status(500).json({ error: "Lỗi server: " + err.message });
     }
 });
 

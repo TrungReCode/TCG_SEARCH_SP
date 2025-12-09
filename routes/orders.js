@@ -138,44 +138,63 @@ router.post("/create-contact", async (req, res) => {
 // =========================================================================
 // 3. ADMIN: LẤY DANH SÁCH GIAO DỊCH (GET /admin/list)
 // =========================================================================
+// routes/orders.js -> API /admin/list
+
 router.get("/admin/list", async (req, res) => {
     try {
         const pool = await connectDB();
         
-        // Query này sẽ lấy chi tiết:
-        // - Ai là người gửi yêu cầu (Người Bán)
-        // - Tin cần mua là gì
-        // - Ai là chủ tin cần mua (Người Mua)
         const query = `
             SELECT 
                 dh.MaDonHang,
                 dh.TrangThai,
                 dh.NgayTao,
-                dh.LoaiGiaoDich, -- 'BAN' (Liên hệ bán) hoặc 'MUA' (Mua thẻ rao)
+                dh.LoaiGiaoDich, 
                 
-                -- Người thực hiện lệnh (Ví dụ: Người bấm nút Liên hệ bán)
+                -- Người thực hiện lệnh
                 NguoiLienHe.TenNguoiDung AS TenNguoiLienHe,
-                NguoiLienHe.Email AS EmailNguoiLienHe,
 
-                -- Thông tin Tin Cần Mua (Nếu là giao dịch BÁN)
-                cm.TieuDe AS TieuDeTinMua,
-                cm.GiaMongMuon,
-                NguoiCanMua.TenNguoiDung AS TenNguoiCanMua,
-                
-                -- Thông tin Thẻ Rao Bán (Nếu là giao dịch MUA)
-                rb.MaRaoBan,
-                rb.Gia AS GiaRaoBan,
-                NguoiBan.TenNguoiDung AS TenChuTheRaoBan
+                -- === 1. TÊN THẺ / TIÊU ĐỀ ===
+                CASE 
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN cm.TieuDe 
+                    ELSE tb_rb.TenThe 
+                END AS TenTheHienThi,
+
+                -- === 2. HÌNH ẢNH (SỬA LỖI TẠI ĐÂY) ===
+                CASE 
+                    -- Nếu là 'BAN' (Tin Cần Mua): Lấy ảnh tin mua hoặc ảnh gốc
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN COALESCE(cm.HinhAnh, tb_cm.HinhAnh)
+                    
+                    -- Nếu là 'MUA' (Tin Rao Bán): Bảng TheRaoBan không có HinhAnh, nên lấy trực tiếp từ TheBai
+                    ELSE tb_rb.HinhAnh 
+                END AS HinhAnhHienThi,
+
+                -- === 3. GIÁ ===
+                CASE 
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN cm.GiaMongMuon 
+                    ELSE rb.Gia 
+                END AS GiaHienThi,
+
+                -- === 4. TÊN ĐỐI TÁC ===
+                CASE 
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN NguoiCanMua.TenNguoiDung
+                    ELSE NguoiBan.TenNguoiDung
+                END AS TenDoiTac
 
             FROM DonHang dh
-            -- Join cho trường hợp Liên Hệ Bán (LoaiGiaoDich = 'BAN')
+            
+            -- JOIN User thực hiện lệnh
             LEFT JOIN NguoiDung NguoiLienHe ON dh.MaNguoiTao = NguoiLienHe.MaNguoiDung
+            
+            -- JOIN cho trường hợp 'BAN' (Liên hệ bán vào tin cần mua)
             LEFT JOIN TheCanMua cm ON dh.MaCanMua = cm.MaCanMua
             LEFT JOIN NguoiDung NguoiCanMua ON cm.MaNguoiDung = NguoiCanMua.MaNguoiDung
+            LEFT JOIN TheBai tb_cm ON cm.MaThe = tb_cm.MaThe 
             
-            -- Join cho trường hợp Mua Thẻ (LoaiGiaoDich = 'MUA')
+            -- JOIN cho trường hợp 'MUA' (Đặt mua thẻ đang bán)
             LEFT JOIN TheRaoBan rb ON dh.MaRaoBan = rb.MaRaoBan
             LEFT JOIN NguoiDung NguoiBan ON rb.MaNguoiDung = NguoiBan.MaNguoiDung
+            LEFT JOIN TheBai tb_rb ON rb.MaThe = tb_rb.MaThe 
 
             ORDER BY dh.NgayTao DESC
         `;
@@ -184,27 +203,75 @@ router.get("/admin/list", async (req, res) => {
         res.json({ success: true, data: result.recordset });
 
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi lấy danh sách đơn hàng" });
+        console.error("Lỗi SQL Admin List:", err);
+        res.status(500).json({ error: "Lỗi lấy danh sách đơn hàng: " + err.message });
     }
 });
 
 // =========================================================================
 // 4. ADMIN: CẬP NHẬT TRẠNG THÁI (PUT /update-status/:id)
 // =========================================================================
+// 4. ADMIN: CẬP NHẬT TRẠNG THÁI (PUT /update-status/:id)
 router.put("/update-status/:id", async (req, res) => {
-    const { TrangThai } = req.body; // 'DangGiao', 'HoanTat', 'Huy'
-    const id = req.params.id;
+    const { TrangThai } = req.body; 
+    const id = req.params.id; // MaDonHang
 
     try {
         const pool = await connectDB();
-        await pool.request()
-            .input("MaDonHang", sql.Int, id)
-            .input("TrangThai", sql.NVarChar, TrangThai)
-            .query("UPDATE DonHang SET TrangThai = @TrangThai WHERE MaDonHang = @MaDonHang");
+        const transaction = new sql.Transaction(pool);
+        
+        await transaction.begin();
+        const request = new sql.Request(transaction);
 
-        res.json({ success: true, message: "Đã cập nhật trạng thái đơn hàng" });
+        try {
+            // 1. Cập nhật trạng thái đơn hàng trong bảng DonHang
+            await request
+                .input("MaDonHang", sql.Int, id)
+                .input("TrangThai", sql.NVarChar, TrangThai)
+                .query("UPDATE DonHang SET TrangThai = @TrangThai WHERE MaDonHang = @MaDonHang");
+
+            // 2. [LOGIC MỚI] Nếu trạng thái là 'HoanTat', kiểm tra xem có cần đóng tin không
+            if (TrangThai === 'HoanTat') {
+                
+                // TH1: Nếu đây là giao dịch 'BAN' (Đáp ứng tin cần mua)
+                // -> Cập nhật DaKetThuc = 1 cho tin cần mua đó
+                await request.query(`
+                    UPDATE TheCanMua 
+                    SET DaKetThuc = 1 
+                    WHERE MaCanMua IN (
+                        SELECT MaCanMua FROM DonHang 
+                        WHERE MaDonHang = @MaDonHang AND LoaiGiaoDich = 'BAN'
+                    )
+                `);
+
+                // TH2: Nếu đây là giao dịch 'MUA' (Mua thẻ rao bán)
+                // -> Cập nhật tin rao bán thành 'Đã bán' hoặc xóa (Tùy logic shop)
+                // Ở đây ta update TinhTrang thành 'DaBan' để nó không hiện lên nữa (nhờ logic filter NOT EXISTS ở bài trước)
+                // (Phần này tùy chọn, nhưng nên làm để đồng bộ)
+            }
+
+            // 3. Nếu trạng thái là 'Huy', ta có thể mở lại tin (nếu muốn logic chặt chẽ)
+            if (TrangThai === 'Huy') {
+                 await request.query(`
+                    UPDATE TheCanMua 
+                    SET DaKetThuc = 0 
+                    WHERE MaCanMua IN (
+                        SELECT MaCanMua FROM DonHang 
+                        WHERE MaDonHang = @MaDonHang AND LoaiGiaoDich = 'BAN'
+                    )
+                `);
+            }
+
+            await transaction.commit();
+            res.json({ success: true, message: "Đã cập nhật trạng thái & đồng bộ dữ liệu" });
+
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+
     } catch (err) {
+        console.error(err);
         res.status(500).json({ error: "Lỗi cập nhật" });
     }
 });
