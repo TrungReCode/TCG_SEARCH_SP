@@ -3,30 +3,34 @@ const router = express.Router();
 const { sql, connectDB } = require('../db');
 const bcrypt = require('bcryptjs');
 
-router.post('/', async (req, res) => {
-    const { username, email, password } = req.body;
+// routes/auth.js
+
+router.post("/", async (req, res) => {
+    // 1. Nhận thêm SoDienThoai từ body
+    const { TenNguoiDung, Email, MatKhau, SoDienThoai } = req.body; 
+
+    if (!TenNguoiDung || !Email || !MatKhau || !SoDienThoai) {
+        return res.status(400).json({ error: "Vui lòng nhập đầy đủ thông tin (bao gồm SĐT)" });
+    }
+
     try {
         const pool = await connectDB();
-        const hashed = await bcrypt.hash(password, 10);
+        const hashedPassword = await bcrypt.hash(MatKhau, 10);
 
-        const check = await pool.request()
-            .input('email', sql.NVarChar, email)
-            .input('username', sql.NVarChar, username)
-            .query('SELECT * FROM NguoiDung WHERE Email=@email OR TenNguoiDung=@username');
-
-        if (check.recordset.length) return res.status(400).json({ error: "Tên đăng nhập hoặc email đã tồn tại" });
-
+        // 2. Thêm vào câu lệnh INSERT
         await pool.request()
-            .input('username', sql.NVarChar, username)
-            .input('email', sql.NVarChar, email)
-            .input('password', sql.NVarChar, hashed)
-            .query('INSERT INTO NguoiDung (TenNguoiDung, Email, MatKhau, VaiTro) VALUES (@username,@email,@password,0)');
+            .input("TenNguoiDung", sql.NVarChar, TenNguoiDung)
+            .input("Email", sql.NVarChar, Email)
+            .input("MatKhau", sql.NVarChar, hashedPassword)
+            .input("SoDienThoai", sql.NVarChar, SoDienThoai) // <--- Input mới
+            .query(`
+                INSERT INTO NguoiDung (TenNguoiDung, Email, MatKhau, SoDienThoai)
+                VALUES (@TenNguoiDung, @Email, @MatKhau, @SoDienThoai)
+            `);
 
-        res.json({ success: true });
+        res.json({ success: true, message: "Đăng ký thành công!" });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi server" });
+        res.status(500).json({ error: err.message });
     }
 });
-
 module.exports = router;

@@ -14,39 +14,53 @@
       <input type="text" name="username" placeholder="Tên người dùng" required>
       <input type="email" name="email" placeholder="Email" required>
       <input type="password" name="password" placeholder="Mật khẩu" required autocomplete="off">
+      
+      <input type="text" id="regPhone" placeholder="Số điện thoại / Zalo" required>
+      
       <button type="submit">Đăng ký</button>
     </form>
-    <div class="error-message" id="errorMessage"></div>
+    <div class="error-message" id="errorMessage" style="color: red; margin-top: 10px;"></div>
     <p>Đã có tài khoản? <a href="login.html">Đăng nhập</a></p>
   </div>
 
   <script>
-    document.getElementById("registerForm").addEventListener("submit", function (e) {
+    document.getElementById("registerForm").addEventListener("submit", async function (e) {
       e.preventDefault();
 
+      // 1. Lấy dữ liệu từ Form
       const username = this.username.value.trim();
       const email = this.email.value.trim();
       const password = this.password.value;
+      const phone = document.getElementById("regPhone").value.trim(); // <--- LẤY SỐ ĐIỆN THOẠI
 
-      fetch("http://localhost:3000/register", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ username, email, password })
-      })
-        .then(async res => {
-          if (!res.ok) {
-            const text = await res.text();
-            throw new Error(text || "Đăng ký thất bại");
-          }
-          return res.text();
-        })
-        .then(data => {
-          alert(data);
-          window.location.href = "login.html";
-        })
-        .catch(err => {
-          document.getElementById("errorMessage").textContent = err.message;
+      // 2. Gửi về Server
+      try {
+        const res = await fetch("http://localhost:3000/register", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            // QUAN TRỌNG: Tên key phải khớp với Backend (routes/auth.js)
+            TenNguoiDung: username, 
+            Email: email,
+            MatKhau: password,
+            SoDienThoai: phone  // <--- GỬI KÈM SỐ ĐIỆN THOẠI
+          })
         });
+
+        const data = await res.json(); // Backend trả về JSON, nên dùng .json()
+
+        if (!res.ok) {
+          throw new Error(data.error || "Đăng ký thất bại");
+        }
+
+        // 3. Thành công
+        alert(data.message || "Đăng ký thành công!");
+        window.location.href = "login.html";
+
+      } catch (err) {
+        // 4. Xử lý lỗi
+        document.getElementById("errorMessage").textContent = err.message;
+      }
     });
   </script>
 </body>

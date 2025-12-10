@@ -3,171 +3,163 @@
 
 <head>
   <meta charset="UTF-8">
-  <title>Danh sách người dùng</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Quản lý người dùng</title>
   <style>
-    body {
-      font-family: Arial, sans-serif;
-      margin: 20px;
-    }
+    /* --- GIỮ NGUYÊN CSS CŨ --- */
+    body { font-family: Arial, sans-serif; margin: 20px; background-color: #f9f9f9; }
+    h1 { color: #333; }
+    .header-actions { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+    .btn-back { text-decoration: none; background-color: #555; color: white; padding: 8px 15px; border-radius: 4px; font-size: 14px; }
+    .btn-back:hover { background-color: #333; }
+    .filter-container { display: flex; gap: 10px; align-items: center; background: white; padding: 15px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); }
+    .filter-container label { font-weight: bold; }
+    .filter-container select { padding: 6px 12px; border: 1px solid #ccc; border-radius: 4px; cursor: pointer; }
+    
+    table { border-collapse: collapse; width: 100%; background: white; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1); border-radius: 8px; overflow: hidden; }
+    th, td { border-bottom: 1px solid #eee; padding: 12px 15px; text-align: left; }
+    th { background: #007bff; color: white; text-transform: uppercase; font-size: 13px; }
+    tr:hover { background-color: #f1f1f1; }
+    
+    button { padding: 6px 12px; cursor: pointer; border-radius: 4px; font-size: 13px; transition: opacity 0.2s; }
+    button:hover { opacity: 0.8; }
+    .delete { background: #dc3545; border: none; color: white; }
+    
+    .role-badge { display: inline-block; padding: 4px 8px; border-radius: 12px; font-size: 12px; font-weight: bold; }
+    .role-admin { background-color: #cce5ff; color: #004085; }
+    .role-user { background-color: #d4edda; color: #155724; }
 
-    .filter-container {
-      margin-bottom: 20px;
-      display: flex;
-      gap: 10px;
-      align-items: center;
-    }
-
-    .filter-container label {
-      font-weight: bold;
-    }
-
-    .filter-container select {
-      padding: 6px 12px;
-      border: 1px solid #ccc;
-      border-radius: 4px;
-      cursor: pointer;
-    }
-
-    table {
-      border-collapse: collapse;
-      width: 100%;
-    }
-
-    th,
-    td {
-      border: 1px solid #ccc;
-      padding: 8px;
-      text-align: left;
-    }
-
-    th {
-      background: #f2f2f2;
-    }
-
-    button {
-      margin-right: 6px;
-      padding: 4px 8px;
-      cursor: pointer;
-    }
-
-    .delete {
-      background: red;
-      border: none;
-      color: white;
-    }
-
-    .lock {
-      background: orange;
-      border: none;
-      color: white;
-    }
+    /* CSS cho link Zalo */
+    .zalo-link { color: #0068ff; text-decoration: none; font-weight: bold; display: flex; align-items: center; gap: 5px;}
+    .zalo-link:hover { text-decoration: underline; }
   </style>
 </head>
 
 <body>
-  <h1>Danh sách người dùng</h1>
-  <!-- Thêm bộ lọc theo vai trò -->
+
+  <div class="header-actions">
+    <h1>Danh sách người dùng</h1>
+    <a href="admin.html" class="btn-back">← Quay lại Dashboard</a>
+  </div>
+
   <div class="filter-container">
     <label for="roleFilter">Lọc theo vai trò:</label>
     <select id="roleFilter" onchange="loadUsers()">
-      <option value="">Tất cả vai trò</option>
+      <option value="">-- Tất cả --</option>
       <option value="1">Quản trị viên</option>
       <option value="0">Người chơi</option>
     </select>
   </div>
+
+  <br>
+
   <table>
     <thead>
       <tr>
         <th>Mã</th>
-        <th>Tên</th>
-        <th>Email</th>
+        <th>Tên hiển thị</th>
+        <th>Số điện thoại / Zalo</th> <th>Email</th>
         <th>Vai trò</th>
         <th>Thao tác</th>
       </tr>
     </thead>
-    <tbody id="userTableBody"></tbody>
+    <tbody id="userTableBody">
+      <tr>
+        <td colspan="6" style="text-align: center;">Đang tải dữ liệu...</td>
+      </tr>
+    </tbody>
   </table>
 
   <script>
     const API_URL = "http://localhost:3000/users";
 
     async function loadUsers() {
-      <!-- Lấy giá trị lọc từ dropdown -->
       const roleFilter = document.getElementById('roleFilter').value;
       const currentUserId = localStorage.getItem('maNguoiDung');
 
-      const res = await fetch(`${API_URL}`);
-      const users = await res.json();
-      const tbody = document.getElementById('userTableBody');
-      tbody.innerHTML = '';
+      try {
+        const res = await fetch(`${API_URL}`);
+        if (!res.ok) throw new Error("Không thể tải danh sách người dùng.");
+        
+        const users = await res.json();
+        const tbody = document.getElementById('userTableBody');
+        tbody.innerHTML = '';
 
-      users.forEach(u => {
-        // Bỏ qua tài khoản đang đăng nhập
-        if (u.MaNguoiDung == currentUserId) {
+        const filteredUsers = users.filter(u => {
+          if (u.MaNguoiDung == currentUserId) return false;
+          if (roleFilter !== '' && u.VaiTro != roleFilter) return false;
+          return true;
+        });
+
+        if (filteredUsers.length === 0) {
+          tbody.innerHTML = '<tr><td colspan="6" style="text-align:center; padding: 20px;">Không tìm thấy người dùng nào.</td></tr>';
           return;
         }
 
-        if (roleFilter !== '' && u.VaiTro != roleFilter) {
-          return;
-        }
+        filteredUsers.forEach(u => {
+          const isAdmin = u.VaiTro == 1;
+          const roleBadge = isAdmin 
+            ? `<span class="role-badge role-admin">Quản trị viên</span>` 
+            : `<span class="role-badge role-user">Người chơi</span>`;
 
-        let roleText = u.VaiTro == 1 ? 'Quản trị viên' : 'Người chơi';
+          // Xử lý hiển thị số điện thoại
+          let phoneHtml = '<span style="color:#ccc; font-style:italic">Chưa cập nhật</span>';
+          if (u.SoDienThoai && u.SoDienThoai.length > 5) {
+             // Tạo link bấm vào là mở Zalo
+             phoneHtml = `<a href="https://zalo.me/${u.SoDienThoai}" target="_blank" class="zalo-link" title="Chat Zalo">
+                            ${u.SoDienThoai} ↗
+                          </a>`;
+          }
 
-        const tr = document.createElement('tr');
-        tr.innerHTML = `
-          <td>${u.MaNguoiDung}</td>
-          <td>${u.TenNguoiDung}</td>
-          <td>${u.Email}</td>
-          <td>${roleText}</td>
-          <td></td>
-        `;
+          const tr = document.createElement('tr');
+          tr.innerHTML = `
+            <td>#${u.MaNguoiDung}</td>
+            <td><strong>${u.TenNguoiDung}</strong></td>
+            <td>${phoneHtml}</td> <td>${u.Email}</td>
+            <td>${roleBadge}</td>
+            <td></td>
+          `;
 
-        // Nếu là người chơi thì thêm nút
-        if (u.VaiTro == 0) {
           const tdAction = tr.querySelector('td:last-child');
 
-          /*const btnLock = document.createElement('button');
-          btnLock.textContent = 'Khóa';
-          btnLock.className = 'lock';
-          btnLock.onclick = () => lockUser(u.MaNguoiDung);*/
+          if (!isAdmin) {
+            const btnDelete = document.createElement('button');
+            btnDelete.textContent = 'Xóa';
+            btnDelete.className = 'delete';
+            btnDelete.onclick = () => deleteUser(u.MaNguoiDung, u.TenNguoiDung);
+            tdAction.appendChild(btnDelete);
+          } else {
+            tdAction.innerHTML = '<span style="color: #999; font-size: 12px; font-style:italic;">Không thể tác động</span>';
+          }
 
-          const btnDelete = document.createElement('button');
-          btnDelete.textContent = 'Xóa';
-          btnDelete.className = 'delete';
-          btnDelete.onclick = () => deleteUser(u.MaNguoiDung);
+          tbody.appendChild(tr);
+        });
 
-          //tdAction.appendChild(btnLock);
-          tdAction.appendChild(btnDelete);
+      } catch (err) {
+        console.error(err);
+        document.getElementById('userTableBody').innerHTML = `<tr><td colspan="6" style="color: red; text-align: center;">Lỗi kết nối: ${err.message}</td></tr>`;
+      }
+    }
+
+    async function deleteUser(id, name) {
+      if (!confirm(`CẢNH BÁO: Bạn có chắc chắn muốn xóa người dùng "${name}"?\nHành động này không thể hoàn tác!`)) return;
+      
+      try {
+        const res = await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
+        
+        if (res.ok) {
+          alert('Đã xóa thành công!');
+          loadUsers();
+        } else {
+          const data = await res.json();
+          alert('Lỗi: ' + (data.message || 'Không thể xóa'));
         }
-
-        tbody.appendChild(tr);
-      });
-    }
-
-
-    /*async function lockUser(id) {
-      if (!confirm('Bạn có chắc muốn khóa người dùng này?')) return;
-      try {
-        await fetch(`/lock/${id}`, { method: 'PATCH' });
-        alert('Đã khóa người dùng ' + id);
-        loadUsers();
       } catch (err) {
-        alert('Lỗi khi khóa: ' + err);
-      }
-    }*/
-
-    async function deleteUser(id) {
-      if (!confirm('Bạn có chắc muốn xóa người dùng này?')) return;
-      try {
-        await fetch(`${API_URL}/${id}`, { method: 'DELETE' });
-        alert('Đã xóa người dùng ' + id);
-        loadUsers();
-      } catch (err) {
-        alert('Lỗi khi xóa: ' + err);
+        alert('Lỗi kết nối server: ' + err);
       }
     }
 
-    loadUsers();
+    document.addEventListener('DOMContentLoaded', loadUsers);
   </script>
 </body>
 

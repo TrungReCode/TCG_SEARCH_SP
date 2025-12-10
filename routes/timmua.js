@@ -88,53 +88,47 @@ router.get("/list", async (req, res) => {
 // =========================================================================
 // 3. SỬA TIN (PUT /update/:id) - Hỗ trợ cả User và Admin
 // =========================================================================
-router.put("/update/:id", async (req, res) => {
+router.put('/update/:id', async (req, res) => {
     const id = req.params.id;
-    // Lấy MaNguoiDung từ body (Nếu là Admin thì frontend sẽ không gửi kèm field này)
-    const { MaNguoiDung, TieuDe, MoTa, GiaMongMuon, HinhAnh, DaKetThuc } = req.body;
+    const { MaNguoiDung, TieuDe, GiaMongMuon, MoTa, DaKetThuc } = req.body;
 
     try {
         const pool = await connectDB();
-        const request = pool.request()
-            .input("MaCanMua", sql.Int, id)
-            .input("TieuDe", sql.NVarChar, TieuDe)
-            .input("MoTa", sql.NVarChar, MoTa)
-            .input("GiaMongMuon", sql.Decimal(10, 2), GiaMongMuon)
-            .input("HinhAnh", sql.NVarChar, HinhAnh || null)
-            // Nếu DaKetThuc không gửi lên (undefined), mặc định là 0 (đang tìm)
-            .input("DaKetThuc", sql.Bit, DaKetThuc !== undefined ? DaKetThuc : 0);
+        const request = pool.request();
 
-        // Câu lệnh SQL cơ bản
-        let sqlQuery = `
-            UPDATE TheCanMua 
-            SET TieuDe=@TieuDe, MoTa=@MoTa, GiaMongMuon=@GiaMongMuon, 
-                HinhAnh=@HinhAnh, DaKetThuc=@DaKetThuc
-            WHERE MaCanMua=@MaCanMua
+        request.input('id', sql.Int, id);
+        request.input('TieuDe', sql.NVarChar, TieuDe ?? null);
+        request.input('GiaMongMuon', sql.Decimal(18, 0), GiaMongMuon ?? null);
+        request.input('MoTa', sql.NVarChar, MoTa ?? null);
+        request.input('DaKetThuc', sql.Bit, DaKetThuc ?? null);
+
+        let query = `
+            UPDATE TheCanMua
+            SET 
+                TieuDe = COALESCE(@TieuDe, TieuDe),
+                GiaMongMuon = COALESCE(@GiaMongMuon, GiaMongMuon),
+                MoTa = COALESCE(@MoTa, MoTa),
+                DaKetThuc = COALESCE(@DaKetThuc, DaKetThuc)
+                -- ĐÃ XÓA DÒNG NgayCapNhat ĐỂ KHÔNG BỊ LỖI
+            WHERE MaCanMua = @id
         `;
 
-        // --- LOGIC PHÂN QUYỀN ---
-        // 1. Nếu Request có MaNguoiDung -> User thường đang sửa -> Check quyền sở hữu
         if (MaNguoiDung) {
-            request.input("MaNguoiDung", sql.Int, MaNguoiDung);
-            sqlQuery += ` AND MaNguoiDung = @MaNguoiDung`;
+            request.input('MaNguoiDung', sql.Int, MaNguoiDung);
+            query += " AND MaNguoiDung = @MaNguoiDung";
         }
-        // 2. Nếu KHÔNG có MaNguoiDung -> Admin dashboard đang sửa -> Bỏ qua check quyền
 
-        const result = await request.query(sqlQuery);
+        const result = await request.query(query);
 
-        // Kiểm tra xem có dòng nào được update không
         if (result.rowsAffected[0] === 0) {
-            return res.status(404).json({ 
-                success: false, 
-                error: "Không tìm thấy tin hoặc bạn không có quyền sửa (sai chủ sở hữu)!" 
-            });
+            return res.status(404).json({ success: false, error: "Không tìm thấy tin hoặc lỗi quyền." });
         }
 
-        res.json({ success: true, message: "Cập nhật thành công" });
+        res.json({ success: true, message: "Cập nhật thành công!" });
 
     } catch (err) {
-        console.error("Lỗi cập nhật tin mua:", err);
-        res.status(500).json({ error: "Lỗi server khi cập nhật tin" });
+        console.error("Lỗi Update TimMua:", err);
+        res.status(500).json({ success: false, error: "Lỗi Server: " + err.message });
     }
 });
 

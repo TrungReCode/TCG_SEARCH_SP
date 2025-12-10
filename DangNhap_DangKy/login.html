@@ -15,7 +15,7 @@
       <input type="password" name="password" placeholder="Mật khẩu" required autocomplete="off">
       <button type="submit">Đăng nhập</button>
     </form>
-    <div class="error-message" id="errorMessage"></div>
+    <div class="error-message" id="errorMessage" style="color: red; margin-top: 10px;"></div>
     <p>Chưa có tài khoản? <a href="register.html">Đăng ký</a></p>
   </div>
 
@@ -35,27 +35,36 @@
         const res = await fetch("http://localhost:3000/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ username, password })
+          // [SỬA 1]: Đổi key gửi đi cho khớp với Database/Backend
+          body: JSON.stringify({ 
+            TenNguoiDung: username, 
+            MatKhau: password 
+          })
         });
-
-        if (!res.ok) {
-          throw new Error("Sai tên người dùng hoặc mật khẩu");
-        }
 
         const data = await res.json();
 
-        localStorage.setItem("username", data.username);
-        localStorage.setItem("vaitro", Number(data.vaitro));  // 1 = admin, 0 = người chơi
-        localStorage.setItem("maNguoiDung", data.maNguoiDung);
-        
-        alert("Đăng nhập thành công! Xin chào " + data.username);
+        if (!res.ok) {
+          throw new Error(data.error || "Sai tên người dùng hoặc mật khẩu");
+        }
 
-        if (Number(data.vaitro) === 1) {
+        // [SỬA 2]: Đổi key nhận về (SQL Server trả về viết hoa chữ đầu)
+        // Lưu ý: data.user chứa thông tin user trả về từ backend
+        const user = data.user || data; // Tùy backend trả về {user: ...} hay {...}
+
+        localStorage.setItem("username", user.TenNguoiDung);
+        localStorage.setItem("maNguoiDung", user.MaNguoiDung); 
+        localStorage.setItem("vaitro", user.VaiTro); // SQL trả về bit (0 hoặc 1) hoặc true/false
+
+        alert("Đăng nhập thành công! Xin chào " + user.TenNguoiDung);
+
+        // Chuyển hướng dựa trên vai trò
+        // VaiTro trong SQL bit: 1 là Admin, 0 là User
+        if (Number(user.VaiTro) === 1 || user.VaiTro === true) {
           window.location.href = "/QuanTriVien/admin.html";
         } else {
           window.location.href = "/Player/player.html";
         }
-
 
       } catch (err) {
         console.error("Lỗi đăng nhập:", err);

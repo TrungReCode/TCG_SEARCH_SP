@@ -7,7 +7,7 @@ router.get('/', async (req, res) => {
   try {
     const pool = await connectDB();
     const result = await pool.request()
-      .query('SELECT MaNguoiDung, TenNguoiDung, Email, VaiTro FROM NguoiDung');
+      .query('SELECT MaNguoiDung, TenNguoiDung, Email, VaiTro, SoDienThoai FROM NguoiDung');
     res.json(result.recordset);
   } catch (err) {
     console.error(err);

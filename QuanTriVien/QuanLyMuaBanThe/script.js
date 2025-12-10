@@ -17,7 +17,7 @@ const DOM = {
     formEdit: document.getElementById('formEdit')
 };
 
-// --- CÁC HÀM XỬ LÝ SỰ KIỆN (Gán vào window để HTML gọi được) ---
+// --- CÁC HÀM XỬ LÝ SỰ KIỆN ---
 
 // 1. Chuyển Tab
 window.switchTab = function(tab) {
@@ -41,7 +41,6 @@ window.switchTab = function(tab) {
 // 2. Mở Modal Sửa
 window.openEditModal = function(itemString) {
     try {
-        // Decode chuỗi dữ liệu
         const item = JSON.parse(decodeURIComponent(itemString));
         const isSelling = currentTab === 'selling';
 
@@ -83,11 +82,9 @@ window.deleteItem = async function(id) {
             : `${API.TIM_MUA}/${id}`;
 
         const res = await fetch(url, { method: 'DELETE' });
-        
-        // Kiểm tra nếu server trả về lỗi HTML thay vì JSON
         const contentType = res.headers.get("content-type");
         if (!contentType || !contentType.includes("application/json")) {
-            throw new Error("Server trả về lỗi không xác định (Check API Route).");
+            throw new Error("Server trả về lỗi không xác định.");
         }
 
         const result = await res.json();
@@ -148,7 +145,6 @@ async function loadData() {
 }
 
 function renderContentTable(data) {
-    // Render Header cho Tin đăng
     document.querySelector('thead').innerHTML = `
         <tr>
             <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">ID</th>
@@ -175,7 +171,6 @@ function renderContentTable(data) {
         const price = isSelling ? item.GiaBan : item.GiaMongMuon;
         const priceDisplay = price ? new Intl.NumberFormat('en-US').format(price) + ' $' : 'Thỏa thuận';
         
-        // Encode dữ liệu an toàn để truyền vào hàm onclick
         const itemString = encodeURIComponent(JSON.stringify(item));
 
         return `
@@ -186,12 +181,8 @@ function renderContentTable(data) {
                 <td class="px-5 py-4 text-sm text-gray-600">${user}</td>
                 <td class="px-5 py-4 text-sm font-bold text-red-600">${priceDisplay}</td>
                 <td class="px-5 py-4 text-center">
-                    <button onclick="window.openEditModal('${itemString}')" class="text-blue-500 hover:text-blue-700 mr-3 px-2 py-1 rounded hover:bg-blue-50" title="Sửa">
-                        <i class="fas fa-edit"></i>
-                    </button>
-                    <button onclick="window.deleteItem(${id})" class="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50" title="Xóa">
-                        <i class="fas fa-trash"></i>
-                    </button>
+                    <button onclick="window.openEditModal('${itemString}')" class="text-blue-500 hover:text-blue-700 mr-3 px-2 py-1 rounded hover:bg-blue-50" title="Sửa"><i class="fas fa-edit"></i></button>
+                    <button onclick="window.deleteItem(${id})" class="text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50" title="Xóa"><i class="fas fa-trash"></i></button>
                 </td>
             </tr>
         `;
@@ -199,13 +190,7 @@ function renderContentTable(data) {
 }
 
 function renderOrderTable(data) {
-    if (!Array.isArray(data)) {
-        console.error("Dữ liệu không hợp lệ:", data);
-        DOM.tableBody.innerHTML = `<tr><td colspan="6" class="text-center text-red-500 py-10">Lỗi dữ liệu: ${data.error || "Không xác định"}</td></tr>`;
-        return;
-    }
-
-    if (data.length === 0) {
+    if (!Array.isArray(data) || data.length === 0) {
         DOM.tableBody.innerHTML = '<tr><td colspan="6" class="text-center py-10 text-gray-500">Chưa có giao dịch nào</td></tr>';
         return;
     }
@@ -215,8 +200,7 @@ function renderOrderTable(data) {
         <tr>
             <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Mã GD</th>
             <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Loại</th>
-            <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Chi Tiết</th>
-            <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Giá Trị</th>
+            <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Người Tạo Lệnh</th> <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Đối Tác (Chủ tin)</th> <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Sản Phẩm</th>
             <th class="px-5 py-3 bg-gray-50 text-left text-xs font-semibold text-gray-600 uppercase">Trạng Thái</th>
             <th class="px-5 py-3 bg-gray-50 text-center text-xs font-semibold text-gray-600 uppercase">Xử Lý</th>
         </tr>
@@ -228,24 +212,46 @@ function renderOrderTable(data) {
             ? '<span class="bg-purple-100 text-purple-700 px-2 py-1 rounded text-xs font-bold">Bán Thẻ</span>'
             : '<span class="bg-green-100 text-green-700 px-2 py-1 rounded text-xs font-bold">Mua Thẻ</span>';
             
-        // Dữ liệu đã được Backend xử lý sẵn (TenTheHienThi, HinhAnhHienThi)
         const cardName = item.TenTheHienThi || 'Không có tên';
         const cardImg = item.HinhAnhHienThi || 'https://via.placeholder.com/60x80?text=No+Img';
-        const doiTac = item.TenDoiTac || 'Ẩn danh';
-
-        const detailHtml = `
-            <div class="flex items-start gap-3">
-                <img src="${cardImg}" class="w-12 h-16 object-cover rounded border bg-white shadow-sm">
-                <div class="text-sm">
-                    <div class="font-bold text-gray-800">${item.TenNguoiLienHe}</div>
-                    <div class="text-xs text-gray-500">
-                        <i class="fas fa-arrow-right mx-1"></i> ${isBan ? 'Bán cho' : 'Mua của'}: <strong>${doiTac}</strong>
-                    </div>
-                    <div class="text-xs text-blue-600 font-semibold mt-1 truncate w-40" title="${cardName}">${cardName}</div>
-                </div>
-            </div>`;
-
         const price = item.GiaHienThi ? new Intl.NumberFormat('en-US').format(item.GiaHienThi) + ' $' : 'Thỏa thuận';
+
+        // --- HÀM TẠO NÚT ZALO ---
+        const createZaloBtn = (phone, name, label) => {
+            if (!phone || phone.length < 5) return `<span class="text-xs text-gray-400 italic">Chưa có SĐT</span>`;
+            return `
+                <div class="mt-1">
+                    <span class="text-xs text-gray-500 block mb-0.5">${label}:</span>
+                    <a href="https://zalo.me/${phone}" target="_blank" 
+                       class="inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-600 border border-blue-200 hover:bg-blue-100 px-2 py-1 rounded transition">
+                        <i class="fas fa-comment-dots"></i> ${name} (${phone})
+                    </a>
+                </div>
+            `;
+        };
+
+        // --- HTML CHO NGƯỜI TẠO LỆNH ---
+        const creatorHtml = `
+            <div class="font-bold text-gray-800">${item.TenNguoiLienHe}</div>
+            ${createZaloBtn(item.SdtNguoiLienHe, "Chat", "Liên hệ")}
+        `;
+
+        // --- HTML CHO ĐỐI TÁC ---
+        const partnerHtml = `
+            <div class="font-bold text-gray-800">${item.TenDoiTac}</div>
+            ${createZaloBtn(item.SdtDoiTac, "Chat", "Liên hệ")}
+        `;
+
+        // --- HTML SẢN PHẨM ---
+        const productHtml = `
+            <div class="flex items-center gap-2">
+                <img src="${cardImg}" class="w-10 h-14 object-cover rounded border bg-white">
+                <div>
+                    <div class="text-xs text-blue-600 font-semibold truncate w-32" title="${cardName}">${cardName}</div>
+                    <div class="text-xs font-bold text-red-500">${price}</div>
+                </div>
+            </div>
+        `;
 
         let statusClass = {
             'ChoXuLy': 'bg-yellow-100 text-yellow-800 border-yellow-200',
@@ -273,8 +279,7 @@ function renderOrderTable(data) {
             <tr class="hover:bg-gray-50 border-b border-gray-200 transition">
                 <td class="px-5 py-4 font-mono text-xs text-gray-500">#${item.MaDonHang}</td>
                 <td class="px-5 py-4">${typeBadge}</td>
-                <td class="px-5 py-4">${detailHtml}</td>
-                <td class="px-5 py-4 font-bold text-gray-800">${price}</td>
+                <td class="px-5 py-4">${creatorHtml}</td> <td class="px-5 py-4">${partnerHtml}</td> <td class="px-5 py-4">${productHtml}</td>
                 <td class="px-5 py-4"><span class="${statusClass} border px-2 py-1 rounded-full text-xs font-bold shadow-sm">${item.TrangThai}</span></td>
                 <td class="px-5 py-4 text-center"><div class="w-20 mx-auto">${actionBtns}</div></td>
             </tr>

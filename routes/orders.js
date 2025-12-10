@@ -138,6 +138,8 @@ router.post("/create-contact", async (req, res) => {
 // =========================================================================
 // routes/orders.js -> API /admin/list
 
+// File: routes/orders.js -> router.get("/admin/list")
+
 router.get("/admin/list", async (req, res) => {
     try {
         const pool = await connectDB();
@@ -149,47 +151,48 @@ router.get("/admin/list", async (req, res) => {
                 dh.NgayTao,
                 dh.LoaiGiaoDich, 
                 
-                -- Người thực hiện lệnh
+                -- 1. THÔNG TIN NGƯỜI TẠO LỆNH (Người bấm nút)
                 NguoiLienHe.TenNguoiDung AS TenNguoiLienHe,
+                NguoiLienHe.SoDienThoai AS SdtNguoiLienHe,
 
-                -- === 1. TÊN THẺ / TIÊU ĐỀ ===
+                -- 2. THÔNG TIN ĐỐI TÁC (Chủ bài đăng)
+                CASE 
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN NguoiCanMua.TenNguoiDung
+                    ELSE NguoiBan.TenNguoiDung
+                END AS TenDoiTac,
+                
+                CASE 
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN NguoiCanMua.SoDienThoai
+                    ELSE NguoiBan.SoDienThoai
+                END AS SdtDoiTac, 
+
+                -- 3. THÔNG TIN THẺ
                 CASE 
                     WHEN dh.LoaiGiaoDich = 'BAN' THEN cm.TieuDe 
                     ELSE tb_rb.TenThe 
                 END AS TenTheHienThi,
 
-                -- === 2. HÌNH ẢNH (SỬA LỖI TẠI ĐÂY) ===
                 CASE 
-                    -- Nếu là 'BAN' (Tin Cần Mua): Lấy ảnh tin mua hoặc ảnh gốc
                     WHEN dh.LoaiGiaoDich = 'BAN' THEN COALESCE(cm.HinhAnh, tb_cm.HinhAnh)
-                    
-                    -- Nếu là 'MUA' (Tin Rao Bán): Bảng TheRaoBan không có HinhAnh, nên lấy trực tiếp từ TheBai
                     ELSE tb_rb.HinhAnh 
                 END AS HinhAnhHienThi,
 
-                -- === 3. GIÁ ===
                 CASE 
                     WHEN dh.LoaiGiaoDich = 'BAN' THEN cm.GiaMongMuon 
                     ELSE rb.Gia 
-                END AS GiaHienThi,
-
-                -- === 4. TÊN ĐỐI TÁC ===
-                CASE 
-                    WHEN dh.LoaiGiaoDich = 'BAN' THEN NguoiCanMua.TenNguoiDung
-                    ELSE NguoiBan.TenNguoiDung
-                END AS TenDoiTac
+                END AS GiaHienThi
 
             FROM DonHang dh
             
             -- JOIN User thực hiện lệnh
             LEFT JOIN NguoiDung NguoiLienHe ON dh.MaNguoiTao = NguoiLienHe.MaNguoiDung
             
-            -- JOIN cho trường hợp 'BAN' (Liên hệ bán vào tin cần mua)
+            -- JOIN Tin Cần Mua (Nếu là BAN -> User Cần mua là Đối tác)
             LEFT JOIN TheCanMua cm ON dh.MaCanMua = cm.MaCanMua
             LEFT JOIN NguoiDung NguoiCanMua ON cm.MaNguoiDung = NguoiCanMua.MaNguoiDung
             LEFT JOIN TheBai tb_cm ON cm.MaThe = tb_cm.MaThe 
             
-            -- JOIN cho trường hợp 'MUA' (Đặt mua thẻ đang bán)
+            -- JOIN Tin Rao Bán (Nếu là MUA -> User Bán là Đối tác)
             LEFT JOIN TheRaoBan rb ON dh.MaRaoBan = rb.MaRaoBan
             LEFT JOIN NguoiDung NguoiBan ON rb.MaNguoiDung = NguoiBan.MaNguoiDung
             LEFT JOIN TheBai tb_rb ON rb.MaThe = tb_rb.MaThe 
@@ -202,14 +205,13 @@ router.get("/admin/list", async (req, res) => {
 
     } catch (err) {
         console.error("Lỗi SQL Admin List:", err);
-        res.status(500).json({ error: "Lỗi lấy danh sách đơn hàng: " + err.message });
+        res.status(500).json({ error: "Lỗi: " + err.message });
     }
 });
 
 // =========================================================================
 // 4. ADMIN: CẬP NHẬT TRẠNG THÁI (PUT /update-status/:id)
 // =========================================================================
-// 4. ADMIN: CẬP NHẬT TRẠNG THÁI (PUT /update-status/:id)
 router.put("/update-status/:id", async (req, res) => {
     const { TrangThai } = req.body; 
     const id = req.params.id; // MaDonHang
@@ -271,6 +273,106 @@ router.put("/update-status/:id", async (req, res) => {
     } catch (err) {
         console.error(err);
         res.status(500).json({ error: "Lỗi cập nhật" });
+    }
+});
+
+// =========================================================================
+// 5. LẤY ĐƠN HÀNG CỦA TÔI (GET /my-orders)
+// =========================================================================
+router.get("/my-orders", async (req, res) => {
+    try {
+        const { maNguoiDung } = req.query;
+        if (!maNguoiDung) return res.status(400).json({ error: "Thiếu ID người dùng" });
+
+        const pool = await connectDB();
+        
+        // Query lấy cả đơn MUA (tôi đi mua thẻ) và đơn BAN (tôi bán cho người cần)
+        const query = `
+            SELECT 
+                dh.MaDonHang,
+                dh.TrangThai,
+                dh.NgayTao,
+                dh.LoaiGiaoDich,
+                dh.GiaGiaoDich,
+
+                -- Lấy tên thẻ và ảnh tùy theo loại giao dịch
+                CASE 
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN cm.TieuDe 
+                    ELSE tb_rb.TenThe 
+                END AS TenTheHienThi,
+
+                CASE 
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN COALESCE(cm.HinhAnh, tb_cm.HinhAnh)
+                    ELSE COALESCE(rb.HinhAnh, tb_rb.HinhAnh)
+                END AS HinhAnhHienThi,
+
+                -- Lấy giá
+                CASE 
+                    WHEN dh.LoaiGiaoDich = 'BAN' THEN cm.GiaMongMuon 
+                    ELSE rb.Gia 
+                END AS GiaHienThi
+
+            FROM DonHang dh
+            
+            -- JOIN lấy thông tin nếu là đơn liên hệ BÁN (Đáp ứng tin cần mua)
+            LEFT JOIN TheCanMua cm ON dh.MaCanMua = cm.MaCanMua
+            LEFT JOIN TheBai tb_cm ON cm.MaThe = tb_cm.MaThe
+            
+            -- JOIN lấy thông tin nếu là đơn MUA (Mua thẻ đang rao)
+            LEFT JOIN TheRaoBan rb ON dh.MaRaoBan = rb.MaRaoBan
+            LEFT JOIN TheBai tb_rb ON rb.MaThe = tb_rb.MaThe
+
+            WHERE dh.MaNguoiTao = @CurrentUser
+            ORDER BY dh.NgayTao DESC
+        `;
+
+        const result = await pool.request()
+            .input("CurrentUser", sql.Int, maNguoiDung)
+            .query(query);
+
+        res.json({ success: true, data: result.recordset });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi lấy danh sách đơn hàng" });
+    }
+});
+
+// =========================================================================
+// 6. NGƯỜI DÙNG TỰ HỦY ĐƠN (PUT /cancel-my-order/:id)
+// =========================================================================
+router.put("/cancel-my-order/:id", async (req, res) => {
+    const { maNguoiDung } = req.body; // Cần gửi kèm ID để bảo mật (chỉ chính chủ mới được hủy)
+    const id = req.params.id;
+
+    try {
+        const pool = await connectDB();
+        
+        // Kiểm tra xem đơn này có phải của user không và có đang 'ChoXuLy' không
+        const check = await pool.request()
+            .input("MaDonHang", sql.Int, id)
+            .input("MaNguoiTao", sql.Int, maNguoiDung)
+            .query(`
+                SELECT MaDonHang FROM DonHang 
+                WHERE MaDonHang = @MaDonHang 
+                AND MaNguoiTao = @MaNguoiTao 
+                AND TrangThai = 'ChoXuLy'
+            `);
+
+        if (check.recordset.length === 0) {
+            return res.status(400).json({ success: false, error: "Không thể hủy (Đơn không tồn tại, không phải của bạn, hoặc đã được xử lý)." });
+        }
+
+        // Thực hiện hủy
+        await pool.request()
+            .input("MaDonHang", sql.Int, id)
+            .query("UPDATE DonHang SET TrangThai = 'Huy' WHERE MaDonHang = @MaDonHang");
+
+        res.json({ success: true, message: "Đã hủy đơn hàng thành công!" });
+
+    } catch (err) {
+        console.error(err);
+        res.status(500).json({ error: "Lỗi hệ thống khi hủy đơn" });
     }
 });
 

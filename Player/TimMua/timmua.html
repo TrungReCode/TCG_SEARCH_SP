@@ -7,49 +7,90 @@
     <title>Sàn Giao Dịch Thẻ Bài TCG</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" />
-    <link rel="stylesheet" href="styles.css">
+    
+    <style>
+        /* Hiệu ứng Fade In cho Modal */
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.95); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .animate-fade-in {
+            animation: fadeIn 0.3s ease-out forwards;
+        }
+
+        /* Tùy chỉnh thanh cuộn cho bảng/list */
+        .custom-scrollbar::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+            background: #cbd5e1;
+            border-radius: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+            background: #94a3b8;
+        }
+
+        /* Hiệu ứng hover cho thẻ bài */
+        .card-hover-effect {
+            transition: all 0.3s ease;
+        }
+        .card-hover-effect:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+        }
+    </style>
 </head>
 
-<body class="bg-gray-50 p-4 sm:p-8 text-gray-800">
+<body class="bg-gray-50 p-4 sm:p-8 text-gray-800 font-sans">
 
     <div class="max-w-7xl mx-auto">
+        
         <header class="mb-8 flex flex-col md:flex-row justify-between items-end border-b-4 border-blue-500 pb-4">
             <div>
-                <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900">
+                <h1 class="text-3xl sm:text-4xl font-extrabold text-gray-900 tracking-tight">
                     Sàn Giao Dịch Thẻ Bài
                 </h1>
-                <p class="text-gray-500 mt-2">Mua bán, trao đổi và tìm kiếm thẻ bài sưu tầm</p>
+                <p class="text-gray-500 mt-2 text-sm sm:text-base">Mua bán, trao đổi và tìm kiếm thẻ bài sưu tầm (TCG)</p>
             </div>
-            <div class="mt-4 md:mt-0">
+            
+            <div class="flex flex-wrap gap-3 mt-4 md:mt-0">
                 <button onclick="openWantModal()"
-                    class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition transform hover:-translate-y-1">
+                    class="bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-2 px-4 rounded-lg shadow-lg transition transform hover:-translate-y-1 flex items-center">
                     <i class="fas fa-bullhorn mr-2"></i> Đăng Tin Cần Mua
+                </button>
+                
+                <button onclick="openMyOrdersModal()"
+                    class="bg-white hover:bg-gray-50 text-gray-700 border border-gray-300 px-4 py-2 rounded-lg font-bold text-sm shadow-sm transition flex items-center gap-2">
+                    <i class="fas fa-list-alt text-blue-500"></i> Đơn Hàng Của Tôi
                 </button>
             </div>
         </header>
 
-        <div id="matchSection"
-            class="hidden bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-8 rounded-r-lg shadow-sm animate-fade-in">
+        <div id="matchSection" class="hidden bg-yellow-50 border-l-4 border-yellow-500 p-4 mb-8 rounded-r-lg shadow-sm animate-fade-in">
             <div class="flex items-center mb-3">
                 <i class="fas fa-bolt text-yellow-600 text-xl mr-2"></i>
                 <h3 class="text-lg font-bold text-yellow-800">
-                    Tìm thấy <span id="matchCount"
-                        class="bg-red-500 text-white px-2 py-0.5 rounded-full text-sm">0</span> thẻ bạn đang cần!
+                    Tìm thấy <span id="matchCount" class="bg-red-500 text-white px-2 py-0.5 rounded-full text-sm">0</span> thẻ bạn đang cần!
                 </h3>
             </div>
             <div id="matchList" class="grid grid-cols-1 md:grid-cols-2 gap-4">
-            </div>
+                </div>
         </div>
 
-        <div class="bg-white p-4 rounded-xl shadow-md mb-8 flex flex-col md:flex-row gap-4 sticky top-2 z-30">
+        <div class="bg-white p-4 rounded-xl shadow-md mb-8 flex flex-col md:flex-row gap-4 sticky top-2 z-30 ring-1 ring-gray-100">
             <div class="flex-grow relative">
                 <i class="fas fa-search absolute left-3 top-3.5 text-gray-400"></i>
-                <input type="text" id="searchInput" placeholder="Tìm kiếm thẻ đang bán..."
+                <input type="text" id="searchInput" placeholder="Tìm kiếm tên thẻ, mã thẻ..."
                     class="w-full pl-10 p-3 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 transition">
             </div>
             <div class="md:flex-shrink-0">
                 <select id="gameFilter"
-                    class="w-full md:w-56 p-3 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer hover:border-blue-500 transition">
+                    class="w-full md:w-56 p-3 border border-gray-200 rounded-lg bg-gray-50 cursor-pointer hover:border-blue-500 transition focus:outline-none focus:ring-2 focus:ring-blue-500">
                     <option value="">-- Đang tải game... --</option>
                 </select>
             </div>
@@ -61,29 +102,26 @@
             </h2>
             <div id="cardList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <div id="loadingMessage" class="col-span-full text-center py-10 text-gray-500">
-                    <i class="fas fa-spinner fa-spin mr-2"></i> Đang tải danh sách...
+                    <i class="fas fa-spinner fa-spin mr-2"></i> Đang tải dữ liệu...
                 </div>
             </div>
         </div>
 
         <div class="mb-12 border-t pt-8">
             <h2 class="text-2xl font-bold text-gray-800 mb-6 flex items-center">
-                <i class="fas fa-search-dollar text-cyan-600 mr-2"></i> Tin Cần Mua (Buying Requests)
+                <i class="fas fa-search-dollar text-cyan-600 mr-2"></i> Tin Cần Mua
             </h2>
             <div id="buyingList" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
                 <div class="col-span-full text-center py-10 text-gray-500">Đang tải tin cần mua...</div>
             </div>
         </div>
-    </div>
 
-    <div id="cardDetailModal"
-        class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden items-center justify-center p-4 z-50"
+    </div> 
+    <div id="cardDetailModal" class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden items-center justify-center p-4 z-50 transition-opacity"
         onclick="if(event.target.id === 'cardDetailModal') closeModal()">
-        <div
-            class="bg-white rounded-xl shadow-2xl w-full max-w-3xl relative overflow-hidden flex flex-col max-h-[90vh]">
-            <div id="modalContent" class="p-6 overflow-y-auto">
-                <button onclick="closeModal()"
-                    class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-2xl transition">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-3xl relative overflow-hidden flex flex-col max-h-[90vh] animate-fade-in">
+            <div id="modalContent" class="p-6 overflow-y-auto custom-scrollbar">
+                <button onclick="closeModal()" class="absolute top-4 right-4 text-gray-400 hover:text-red-500 text-2xl transition z-10">
                     <i class="fas fa-times"></i>
                 </button>
                 <div id="cardDetails"></div>
@@ -93,74 +131,59 @@
 
     <div id="modalAddWant" class="fixed inset-0 bg-gray-900 bg-opacity-70 hidden items-center justify-center p-4 z-50"
         onclick="if(event.target.id === 'modalAddWant') closeWantModal()">
-        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg relative overflow-hidden flex flex-col max-h-[90vh]">
-            <div class="bg-cyan-600 p-4 text-white flex justify-between items-center">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-lg relative overflow-hidden flex flex-col max-h-[90vh] animate-fade-in">
+            <div class="bg-cyan-600 p-4 text-white flex justify-between items-center shrink-0">
                 <h3 class="text-xl font-bold"><i class="fas fa-plus-circle mr-2"></i> Đăng Tin Cần Mua</h3>
-                <button onclick="closeWantModal()" class="text-white hover:text-gray-200"><i
-                        class="fas fa-times"></i></button>
+                <button onclick="closeWantModal()" class="text-white hover:text-gray-200 transition"><i class="fas fa-times"></i></button>
             </div>
 
-            <div class="p-6 overflow-y-auto">
+            <div class="p-6 overflow-y-auto custom-scrollbar">
                 <form id="formAddWant" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1">Chọn thẻ cần mua (Để hệ thống tự tìm
-                            người bán):</label>
+                    <div class="bg-gray-50 p-3 rounded-lg border border-gray-200">
+                        <label class="block text-sm font-medium text-gray-700 mb-1">Bước 1: Chọn thẻ (Hệ thống tự tìm ảnh)</label>
                         <div class="flex gap-2 items-center">
-                            <select id="wantGameFilter" class="w-44 p-2 border rounded-lg bg-white cursor-pointer">
-                                <option value="">-- Chọn trò chơi --</option>
+                            <select id="wantGameFilter" class="w-1/3 p-2 border rounded-lg bg-white text-sm">
+                                <option value="">- Game -</option>
                             </select>
                             <input type="text" id="wantSearchInput"
-                                class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
-                                placeholder="Gõ tên thẻ (VD: Black Lotus)...">
-                            <button type="button" class="bg-gray-200 hover:bg-gray-300 px-3 rounded-lg text-gray-700"
+                                class="flex-1 p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500 text-sm"
+                                placeholder="Tên thẻ (VD: Dark Magician)...">
+                            <button type="button" class="bg-blue-500 hover:bg-blue-600 text-white px-3 py-2 rounded-lg transition"
                                 onclick="searchForWant()">
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
-                        <div id="wantSearchResults"
-                            class="mt-2 max-h-40 overflow-y-auto border-gray-100 divide-y text-sm"></div>
+                        
+                        <div id="wantSearchResults" class="mt-2 max-h-40 overflow-y-auto border-gray-100 divide-y text-sm bg-white rounded shadow-sm"></div>
 
-                        <div id="selectedWantCard"
-                            class="hidden mt-3 p-2 bg-cyan-50 border border-cyan-200 rounded-lg flex items-center justify-between">
+                        <div id="selectedWantCard" class="hidden mt-3 p-2 bg-cyan-50 border border-cyan-200 rounded-lg flex items-center justify-between">
                             <div class="flex items-center gap-3">
-                                <img id="wantCardImg" src="" class="w-10 h-14 object-cover rounded">
-                                <span id="wantCardName" class="font-bold text-cyan-800"></span>
+                                <img id="wantCardImg" src="" class="w-10 h-14 object-cover rounded border bg-white">
+                                <span id="wantCardName" class="font-bold text-cyan-800 text-sm"></span>
                             </div>
-                            <button type="button" class="text-red-500 hover:text-red-700"
-                                onclick="clearSelectedWant()"><i class="fas fa-times-circle"></i></button>
+                            <button type="button" class="text-red-500 hover:text-red-700" onclick="clearSelectedWant()">
+                                <i class="fas fa-times-circle"></i>
+                            </button>
                         </div>
                         <input type="hidden" id="wantMaThe" value="">
-                    </div>
+                        <input type="hidden" id="wantHinhAnh" value=""> </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Tiêu đề tin (*)</label>
-                        <input type="text" id="wantTieuDe" required
-                            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"
-                            placeholder="VD: Cần mua gấp...">
+                        <input type="text" id="wantTieuDe" required class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500" placeholder="VD: Cần mua gấp để đi giải...">
                     </div>
 
                     <div>
-                        <label class="block text-sm font-medium text-gray-700">Giá mong muốn($)</label>
-                        <input type="number" id="wantGia"
-                            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500" step="0.01" min="0"
-                            placeholder="Để trống nếu muốn thỏa thuận">
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700">Link ảnh minh họa (Nếu chưa chọn
-                            thẻ)</label>
-                        <input type="text" id="wantHinhAnh"
-                            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500">
+                        <label class="block text-sm font-medium text-gray-700">Giá mong muốn ($)</label>
+                        <input type="number" id="wantGia" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500" step="0.01" min="0" placeholder="Để trống = Thỏa thuận">
                     </div>
 
                     <div>
                         <label class="block text-sm font-medium text-gray-700">Mô tả chi tiết</label>
-                        <textarea id="wantMoTa" rows="3"
-                            class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"></textarea>
+                        <textarea id="wantMoTa" rows="3" class="w-full p-2 border rounded-lg focus:ring-2 focus:ring-cyan-500"></textarea>
                     </div>
 
-                    <button type="submit"
-                        class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg shadow transition">
+                    <button type="submit" class="w-full bg-cyan-600 hover:bg-cyan-700 text-white font-bold py-3 rounded-lg shadow transition mt-2">
                         Đăng Tin Ngay
                     </button>
                 </form>
@@ -168,42 +191,65 @@
         </div>
     </div>
 
-    <div id="modalTransaction"
-        class="fixed inset-0 bg-gray-900 bg-opacity-80 hidden items-center justify-center p-4 z-[60]"
+    <div id="modalMyOrders" class="fixed inset-0 bg-gray-900 bg-opacity-75 hidden items-center justify-center p-4 z-[70]"
+        onclick="if(event.target.id === 'modalMyOrders') closeModal()">
+        <div class="bg-white rounded-xl shadow-2xl w-full max-w-4xl flex flex-col max-h-[90vh] animate-fade-in">
+            <div class="bg-gray-800 p-4 text-white flex justify-between items-center rounded-t-xl shrink-0">
+                <h3 class="text-lg font-bold"><i class="fas fa-clipboard-list mr-2"></i> Quản Lý Đơn Hàng</h3>
+                <button onclick="closeModal()" class="text-white hover:text-gray-300 text-2xl">&times;</button>
+            </div>
+
+            <div class="p-0 overflow-y-auto custom-scrollbar bg-gray-50 flex-grow">
+                <div class="overflow-x-auto">
+                    <table class="min-w-full leading-normal">
+                        <thead>
+                            <tr>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Mã</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Loại</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Sản Phẩm</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-left text-xs font-semibold text-gray-600 uppercase tracking-wider">Trạng Thái</th>
+                                <th class="px-5 py-3 border-b-2 border-gray-200 bg-gray-100 text-center text-xs font-semibold text-gray-600 uppercase tracking-wider">Thao Tác</th>
+                            </tr>
+                        </thead>
+                        <tbody id="myOrdersBody" class="bg-white"></tbody>
+                    </table>
+                    <p id="myOrdersEmpty" class="hidden text-center py-10 text-gray-500 italic">Bạn chưa có đơn hàng nào.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="modalTransaction" class="fixed inset-0 bg-gray-900 bg-opacity-80 hidden items-center justify-center p-4 z-[60]"
         onclick="if(event.target.id === 'modalTransaction') closeModal()">
-
         <div class="bg-white rounded-xl shadow-2xl w-full max-w-sm p-6 relative animate-fade-in text-center">
-
             <button onclick="closeModal()" class="absolute top-3 right-3 text-gray-400 hover:text-red-500 transition">
                 <i class="fas fa-times text-xl"></i>
             </button>
 
             <div class="mb-4">
-                <div
-                    class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl shadow-sm">
+                <div class="w-16 h-16 bg-green-100 text-green-600 rounded-full flex items-center justify-center mx-auto text-3xl shadow-sm">
                     <i class="fas fa-check"></i>
                 </div>
             </div>
 
-            <h3 class="text-xl font-bold text-gray-800 mb-2">Đã gửi yêu cầu!</h3>
-            <p class="text-sm text-gray-500 mb-6">Vui lòng nhắn tin Zalo cho Admin để hoàn tất giao dịch.</p>
+            <h3 class="text-xl font-bold text-gray-800 mb-2">Yêu cầu thành công!</h3>
+            <p class="text-sm text-gray-500 mb-6">Vui lòng liên hệ Admin qua Zalo để hoàn tất giao dịch trung gian.</p>
 
             <a id="btnZaloContact" href="#" target="_blank"
                 class="block w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-3 px-4 rounded-full shadow-lg transition transform hover:-translate-y-1 mb-4 flex items-center justify-center gap-2">
                 <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/9/91/Icon_of_Zalo.svg/1200px-Icon_of_Zalo.svg.png"
-                    class="w-6 h-6 bg-white rounded-full p-0.5">
+                    class="w-6 h-6 bg-white rounded-full p-0.5 object-cover">
                 <span>Chat Zalo: <span id="txtZaloPhone">...</span></span>
             </a>
 
             <div class="bg-gray-50 border border-gray-100 rounded-lg p-3">
-                <p class="text-xs text-gray-400 uppercase font-semibold">Mã giao dịch</p>
-                <p id="transContent" class="text-lg font-bold text-gray-700 select-all font-mono"></p>
+                <p class="text-xs text-gray-400 uppercase font-semibold">Nội dung chuyển khoản</p>
+                <p id="transContent" class="text-lg font-bold text-gray-700 select-all font-mono mt-1"></p>
             </div>
-
         </div>
     </div>
+    
 
     <script src="script.js"></script>
 </body>
-
 </html>
