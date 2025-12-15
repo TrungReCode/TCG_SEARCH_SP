@@ -255,6 +255,8 @@ router.get("/search-combined", async (req, res) => {
             request.input("MaTroChoi", sql.Int, parseInt(maTroChoi));
         }
 
+        // Hide sold posts for non-owners: show rows where TinhTrang != 'DaBan' OR the current user is the owner
+        query += ` AND (RB.TinhTrang IS NULL OR RB.TinhTrang <> 'DaBan' OR RB.MaNguoiDung = @MaNguoiDung)`;
         query += ` ORDER BY RB.NgayDang DESC`;
 
         const result = await request.query(query);

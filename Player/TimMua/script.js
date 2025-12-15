@@ -52,6 +52,7 @@ const DOM = {
     inputWantMaThe: document.getElementById("wantMaThe"),
     inputWantTieuDe: document.getElementById("wantTieuDe"),
     inputWantHinhAnh: document.getElementById("wantHinhAnh"),
+    inputWantImageLink: document.getElementById("wantImageLink"),
     divSelectedWantCard: document.getElementById("selectedWantCard"),
     imgWantCard: document.getElementById("wantCardImg"),
     lblWantCardName: document.getElementById("wantCardName")
@@ -86,6 +87,7 @@ const Utils = {
             document.body.style.overflow = 'hidden';
         },
         hide: (el) => {
+    
             if (!el) return;
             el.classList.remove('flex');
             el.classList.add('hidden');
@@ -134,13 +136,23 @@ const Marketplace = {
             const isOwner = Number(card.MaNguoiDung) === CONFIG.USER_ID;
             const hasActiveOrder = card.TrangThaiDonHang && ['ChoXuLy', 'DaThanhToan', 'DangGiao'].includes(card.TrangThaiDonHang);
             const isMyOrder = hasActiveOrder && (Number(card.NguoiMuaId) === CONFIG.USER_ID);
+            const normStatus = Utils.normalizeText(card.TinhTrang || '');
+
+            // Hide sold posts from public marketplace; seller still sees them with a sold label
+            if (normStatus === 'daban' && !isOwner) return '';
 
             let btnAction, statusBadge = '', borderClass = 'border border-gray-100', opacityClass = '';
 
             if (isOwner) {
-                borderClass = 'border-2 border-yellow-400 ring-2 ring-yellow-50';
-                btnAction = `<span class="text-xs font-bold text-yellow-700 bg-yellow-100 px-3 py-1.5 rounded-full">Thẻ của bạn</span>`;
-                if (hasActiveOrder) statusBadge = `<div class="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold shadow animate-pulse">Khách đã đặt</div>`;
+                if (normStatus === 'daban') {
+                    borderClass = 'border-2 border-gray-300';
+                    btnAction = `<span class="text-xs font-bold text-gray-700 bg-gray-100 px-3 py-1.5 rounded-full">Đã được bán</span>`;
+                    statusBadge = `<div class="absolute top-2 left-2 bg-green-600 text-white px-2 py-1 rounded text-xs font-bold shadow">Đã được bán</div>`;
+                } else {
+                    borderClass = 'border-2 border-yellow-400 ring-2 ring-yellow-50';
+                    btnAction = `<span class="text-xs font-bold text-yellow-700 bg-yellow-100 px-3 py-1.5 rounded-full">Thẻ của bạn</span>`;
+                    if (hasActiveOrder) statusBadge = `<div class="absolute top-2 left-2 bg-purple-600 text-white px-2 py-1 rounded text-xs font-bold shadow animate-pulse">Khách đã đặt</div>`;
+                }
             } else if (isMyOrder) {
                 borderClass = 'border-2 border-green-500 ring-2 ring-green-50';
                 btnAction = `<button disabled class="text-sm bg-green-600 text-white px-4 py-1.5 rounded font-bold cursor-default shadow-sm"><i class="fas fa-check-circle"></i> Bạn đã đặt mua</button>`;
@@ -200,6 +212,8 @@ const Marketplace = {
             ? `<button disabled class="w-full bg-gray-300 text-gray-600 font-bold py-3 rounded cursor-not-allowed">Đây là thẻ của bạn</button>`
             : `<button onclick="handlePurchase(${card.MaRaoBan}, ${card.GiaBan})" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 rounded shadow-lg transform transition hover:-translate-y-1">MUA NGAY VỚI GIÁ ${Utils.formatCurrency(card.GiaBan)}</button>`;
 
+        const displayTinhTrang = (card.TinhTrang && Utils.normalizeText(card.TinhTrang) === 'daban') ? 'Thẻ của bạn đã được bán' : (card.TinhTrang || 'Mới');
+
         DOM.cardDetails.innerHTML = `
             <div class="flex flex-col md:flex-row gap-6">
                 <div class="w-full md:w-1/3">
@@ -215,7 +229,7 @@ const Marketplace = {
                         </div>
                         <div class="flex justify-between pt-2">
                             <span class="text-gray-500">Tình trạng:</span>
-                            <span class="font-bold text-green-600">${card.TinhTrang}</span>
+                            <span class="font-bold text-green-600">${displayTinhTrang}</span>
                         </div>
                         <div class="flex justify-between pt-2">
                             <span class="text-gray-500">Người bán:</span>
@@ -367,7 +381,7 @@ const Buying = {
         DOM.lblWantCardName.textContent = name;
         DOM.imgWantCard.src = img;
         DOM.wantSearchResults.innerHTML = "";
-        DOM.inputWantHinhAnh.value = img;
+        DOM.inputWantImageLink.value = img;
     },
 
     clearSelected: () => {
@@ -382,7 +396,7 @@ const Buying = {
             MaThe: DOM.inputWantMaThe.value || null,
             TieuDe: DOM.inputWantTieuDe.value,
             GiaMongMuon: document.getElementById("wantGia").value,
-            HinhAnh: DOM.inputWantHinhAnh.value,
+            HinhAnh: DOM.inputWantImageLink.value,
             MoTa: document.getElementById("wantMoTa").value
         };
 
@@ -461,6 +475,12 @@ const Orders = {
                 DOM.myOrdersEmpty.classList.remove('hidden');
             } else {
                 Orders.renderTable(orders);
+                // After rendering orders, refresh marketplace and matching so completed orders
+                // that triggered removal of selling posts are reflected in the UI.
+                try {
+                    Buying.checkMatches();
+                    Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value);
+                } catch (e) { console.warn('Failed to refresh matching/list:', e); }
             }
         } catch (err) {
             DOM.myOrdersBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Lỗi tải dữ liệu. <button onclick="Orders.fetchList(true)" class="underline">Thử lại</button></td></tr>';
@@ -528,8 +548,8 @@ const Orders = {
             if (res.success) {
                 alert("Đã hủy đơn hàng thành công!");
                 // 5. Quan trọng: Sau khi hủy, phải ép tải lại dữ liệu mới
-                Orders.fetchList(true); 
-                
+                try { await Orders.fetchList(true); } catch (e) { console.warn('Reload orders failed:', e); }
+
                 // Cập nhật các list bên ngoài nếu cần
                 Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value);
             } else { alert("Lỗi: " + res.error); }
@@ -562,6 +582,10 @@ const Transaction = {
                 Utils.modal.closeAll();
                 Transaction.showModal(data.adminInfo, `MUA DH${data.orderId}`);
                 Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value);
+                // Reload matching immediately so the buyer's matching view is up-to-date
+                try { Buying.checkMatches(); } catch (e) { console.warn('Reload matching failed:', e); }
+                // Reload user's orders so the 'Đơn hàng của tôi' view is up-to-date
+                try { await Orders.fetchList(true); } catch (e) { console.warn('Reload orders failed:', e); }
             } else {
                 alert("THÔNG BÁO: " + data.error);
                 Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value);

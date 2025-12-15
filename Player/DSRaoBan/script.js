@@ -43,8 +43,17 @@ async function fetchSalesList() {
 
         data.forEach(item => {
             let statusClass = "bg-gray-100 text-gray-600";
-            if(item.TinhTrang.includes("NM")) statusClass = "bg-green-100 text-green-700";
-            else if(item.TinhTrang.includes("HP")) statusClass = "bg-red-100 text-red-700";
+            // normalize status text for checks
+            const rawStatus = (item.TinhTrang || '').toString();
+            const statusNorm = rawStatus.toLowerCase();
+
+            // If marked as sold in DB, show friendly label
+            let displayStatus = rawStatus;
+            if (statusNorm === 'daban' || statusNorm.includes('daban')) {
+                displayStatus = 'Đã được bán';
+                statusClass = 'bg-blue-100 text-blue-700';
+            } else if (rawStatus.includes("Mới")) statusClass = "bg-green-100 text-green-700";
+            else if (rawStatus.includes("Cũ")) statusClass = "bg-red-100 text-red-700";
 
             // [FIX] Dùng placehold.co
             const imgSrc = item.HinhAnh || 'https://placehold.co/300?text=No+Img';
@@ -59,7 +68,7 @@ async function fetchSalesList() {
                             
                             <div class="flex items-center gap-2 mb-2">
                                 <span class="font-bold text-red-600 text-lg">${formatCurrencyUSD(item.GiaBan)}</span>
-                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${statusClass}">${item.TinhTrang}</span>
+                                <span class="px-2 py-0.5 rounded text-[10px] uppercase font-bold ${statusClass}">${displayStatus}</span>
                             </div>
                         </div>
                     </div>

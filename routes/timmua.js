@@ -68,7 +68,17 @@ router.get("/list", async (req, res) => {
             FROM TheCanMua cm
             JOIN NguoiDung nd ON cm.MaNguoiDung = nd.MaNguoiDung
             LEFT JOIN TheBai tb ON cm.MaThe = tb.MaThe
-            WHERE cm.DaKetThuc = 0 
+            WHERE cm.DaKetThuc = 0
+
+                -- Nếu đã có đơn 'BAN' được tạo từ tin cần mua và đơn đang ở trạng thái DangGiao/HoanTat
+                -- thì ẩn tin cần mua đó khỏi danh sách (đã có giao dịch tiếp theo).
+                AND NOT EXISTS (
+                    SELECT 1 FROM DonHang dh
+                    WHERE dh.MaCanMua = cm.MaCanMua
+                      AND dh.LoaiGiaoDich = 'BAN'
+                      AND dh.TrangThai IN ('DangGiao', 'HoanTat')
+                )
+
             ORDER BY cm.NgayDang DESC
         `;
         
@@ -216,7 +226,29 @@ router.get("/match/:MaNguoiDung", async (req, res) => {
             WHERE 
                 cm.MaNguoiDung = @CurrentUserId  
                 AND cm.DaKetThuc = 0
-                AND rb.MaNguoiDung != @CurrentUserId
+                                AND rb.MaNguoiDung != @CurrentUserId
+
+                                -- Loại bỏ những bài rao đã được đánh dấu 'DaBan'
+                                AND (rb.TinhTrang IS NULL OR rb.TinhTrang <> 'DaBan')
+
+                                -- Loại bỏ những bài rao đã có đơn đang xử lý (ai đó đã đặt mua)
+                                AND NOT EXISTS (
+                                        SELECT 1 FROM DonHang dh2
+                                        WHERE dh2.MaRaoBan = rb.MaRaoBan
+                                            AND dh2.TrangThai IN ('ChoXuLy', 'DaThanhToan', 'DangGiao')
+                                )
+
+                                -- [FIX LỖI 2] LOGIC MATCHING THÔNG MINH
+                
+                                -- Nếu current user đã tạo đơn hàng cho bài rao này (ví dụ đã bấm Mua/Đặt trước),
+                                -- thì loại nó ra khỏi kết quả matching để không hiển thị lại.
+                                AND NOT EXISTS (
+                                        SELECT 1 FROM DonHang dh
+                                        WHERE dh.MaRaoBan = rb.MaRaoBan
+                                            AND dh.MaNguoiTao = @CurrentUserId
+                                            AND dh.LoaiGiaoDich = 'MUA'
+                                            AND dh.TrangThai IN ('ChoXuLy', 'DaThanhToan', 'DangGiao')
+                                )
                 
                 -- [FIX LỖI 2] LOGIC MATCHING THÔNG MINH
                 AND (

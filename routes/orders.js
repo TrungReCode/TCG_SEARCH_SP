@@ -230,7 +230,7 @@ router.put("/update-status/:id", async (req, res) => {
                 .input("TrangThai", sql.NVarChar, TrangThai)
                 .query("UPDATE DonHang SET TrangThai = @TrangThai WHERE MaDonHang = @MaDonHang");
 
-            // 2. [LOGIC MỚI] Nếu trạng thái là 'HoanTat', kiểm tra xem có cần đóng tin không
+            // 2. [LOGIC MỚI] Nếu trạng thái là 'HoanTat' hoặc 'DangGiao', kiểm tra xem có cần đóng tin/đồng bộ các đơn khác không
             if (TrangThai === 'HoanTat') {
                 
                 // TH1: Nếu đây là giao dịch 'BAN' (Đáp ứng tin cần mua)
@@ -248,7 +248,48 @@ router.put("/update-status/:id", async (req, res) => {
                 // -> Cập nhật tin rao bán thành 'Đã bán' hoặc xóa (Tùy logic shop)
                 // Ở đây ta update TinhTrang thành 'DaBan' để nó không hiện lên nữa (nhờ logic filter NOT EXISTS ở bài trước)
                 // (Phần này tùy chọn, nhưng nên làm để đồng bộ)
+                    // Thay vì xóa, đánh dấu tin rao bán là 'DaBan' để ẩn khỏi trang rao bán
+                    await request.query(`
+                        UPDATE TheRaoBan
+                        SET TinhTrang = 'DaBan'
+                        WHERE MaRaoBan IN (
+                            SELECT MaRaoBan FROM DonHang WHERE MaDonHang = @MaDonHang AND LoaiGiaoDich = 'MUA'
+                        )
+                    `);
             }
+
+                // Nếu trạng thái là 'DangGiao' và đây là đơn 'BAN' (người bán được chọn để giao)
+                if (TrangThai === 'DangGiao') {
+                    // Lấy thông tin đơn hàng vừa được cập nhật (để biết MaCanMua và LoaiGiaoDich)
+                    const info = await request.query(`
+                        SELECT MaCanMua, LoaiGiaoDich FROM DonHang WHERE MaDonHang = @MaDonHang
+                    `);
+
+                    if (info.recordset && info.recordset.length > 0) {
+                        const row = info.recordset[0];
+
+                        // Nếu là đơn đáp ứng tin cần mua (Loại 'BAN')
+                        if (row.LoaiGiaoDich === 'BAN' && row.MaCanMua) {
+                            // 1) Đánh dấu tin cần mua là đã kết thúc để ẩn khỏi feed (nếu muốn)
+                            await request.query(`
+                                UPDATE TheCanMua SET DaKetThuc = 1 WHERE MaCanMua = ${row.MaCanMua}
+                            `);
+
+                            // 2) HỦY (cập nhật TrangThai = 'Huy') các đơn liên hệ BÁN khác cho cùng MaCanMua
+                            const cancelResult = await request.query(`
+                                UPDATE DonHang
+                                SET TrangThai = 'Huy'
+                                WHERE MaCanMua = ${row.MaCanMua}
+                                  AND LoaiGiaoDich = 'BAN'
+                                  AND MaDonHang <> @MaDonHang
+                                  AND TrangThai IN ('ChoXuLy')
+                            `);
+
+                            // Lưu lại số đơn đã bị hủy để trả về thông tin (tuỳ chọn)
+                            var cancelledCount = Array.isArray(cancelResult.rowsAffected) ? cancelResult.rowsAffected.reduce((a,b)=>a+b,0) : cancelResult.rowsAffected;
+                        }
+                    }
+                }
 
             // 3. Nếu trạng thái là 'Huy', ta có thể mở lại tin (nếu muốn logic chặt chẽ)
             if (TrangThai === 'Huy') {
