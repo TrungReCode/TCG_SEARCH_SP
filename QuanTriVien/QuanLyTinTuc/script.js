@@ -1,11 +1,6 @@
 const vaitro = localStorage.getItem('vaitro');
 const maNguoiDung = localStorage.getItem('maNguoiDung');
 
-if (Number(vaitro) !== 1 || !maNguoiDung) {
-    alert("Bạn không có quyền truy cập trang này hoặc chưa đăng nhập.");
-    window.location.href = "../../index.html";
-}
-
 const newsListDiv = document.getElementById("newsList");
 const editModal = document.getElementById("editModal");
 let currentEditId = null;
