@@ -4,80 +4,115 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Quản trị viên - TCG Hub</title>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
   
-  <!--<link rel="stylesheet" href="styles.css">-->
   <style>
     body {
-      font-family: Arial, sans-serif;
+      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
       background: #f0f2f5;
       margin: 0;
       padding: 0;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
     }
     .container {
-      max-width: 800px;
-      margin: 50px auto;
-      padding: 20px;
+      width: 100%;
+      max-width: 900px;
+      padding: 30px;
       background: #fff;
-      border-radius: 10px;
-      box-shadow: 0 0 12px rgba(0,0,0,0.1);
+      border-radius: 12px;
+      box-shadow: 0 4px 20px rgba(0,0,0,0.1);
       text-align: center;
     }
-    h1 { margin-bottom: 30px; }
-    .btn {
-      display: inline-block;
-      margin: 10px;
-      padding: 12px 25px;
-      font-size: 16px;
-      border: none;
-      border-radius: 6px;
-      cursor: pointer;
-      transition: 0.2s;
-      color: #fff;
+    h1 { margin-bottom: 30px; color: #333; }
+    
+    /* Sử dụng Grid để bố cục đẹp hơn */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+      gap: 20px;
+      margin-bottom: 30px;
     }
-    .btn-logout { background: #e74c3c; }
-    .btn-news { background: #3498db; }
-    .btn-users { background: #2ecc71; }
-    .btn-games { background: #9b59b6; }
-    .btn-cards { background: #f39c12; }
-    .btn-sale { background: #1dc09f; }
-    .btn:hover { opacity: 0.9; }
+
+    .card-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding: 30px 20px;
+      border: none;
+      border-radius: 10px;
+      cursor: pointer;
+      transition: all 0.3s ease;
+      color: #fff;
+      font-size: 18px;
+      font-weight: bold;
+      text-decoration: none;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+
+    .card-btn i {
+      font-size: 40px;
+      margin-bottom: 15px;
+    }
+
+    .card-btn:hover { transform: translateY(-5px); box-shadow: 0 8px 15px rgba(0,0,0,0.2); }
+
+    .btn-news { background: linear-gradient(135deg, #3498db, #2980b9); }
+    .btn-users { background: linear-gradient(135deg, #2ecc71, #27ae60); }
+    .btn-games { background: linear-gradient(135deg, #9b59b6, #8e44ad); }
+    .btn-cards { background: linear-gradient(135deg, #f39c12, #d35400); }
+    .btn-sale { background: linear-gradient(135deg, #1abc9c, #16a085); }
+    
+    .logout-container { text-align: right; margin-bottom: 20px; }
+    .btn-logout {
+      background: #e74c3c;
+      color: white;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 5px;
+      cursor: pointer;
+    }
+    .btn-logout:hover { background: #c0392b; }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1>Bảng điều khiển</h1>
-    <button class="btn btn-logout" id="btnLogout">Đăng xuất</button>
-    <button class="btn btn-news" id="btnNews">Quản lý Tin tức</button>
-    <button class="btn btn-users" id="btnUsers">Quản lý Người dùng</button>
-    <button class="btn btn-games" id="btnGames">Quản lý Trò chơi</button>
-    <button class="btn btn-cards" id="btnCards">Quản lý Thẻ bài</button>
-    <button class="btn btn-sale" id="btnSale">Quản lý Mua bán thẻ</button>
+    <div class="logout-container">
+        <button class="btn-logout" id="btnLogout"><i class="fas fa-sign-out-alt"></i> Đăng xuất</button>
+    </div>
+
+    <h1>Dashboard Quản Trị Viên</h1>
+    
+    <div class="dashboard-grid">
+        <a href="QuanLyTinTuc/quanLyTinTuc.html" class="card-btn btn-news"><i class="fas fa-newspaper"></i>
+            Quản lý Tin tức
+        </a>
+
+        <a href="QuanLyNguoiDung/quanLyNguoiDung.html" class="card-btn btn-users"><i class="fas fa-users"></i>
+            Quản lý Người dùng
+        </a>
+
+        <a href="QuanLyTroChoi/quanLyTroChoi.html" class="card-btn btn-games"><i class="fas fa-gamepad"></i>
+            Quản lý Trò chơi
+        </a>
+
+        <a href="QuanLyTheBai/quanLyTheBai.html" class="card-btn btn-cards"><i class="fas fa-layer-group"></i>
+            Quản lý Thẻ bài
+        </a>
+
+        <a href="QuanLyMuaBanThe/quanLyMuaBanThe.html" class="card-btn btn-sale"><i class="fas fa-shopping-cart"></i>
+            Quản lý Mua bán
+        </a>
+    </div>
   </div>
 
   <script>
     document.getElementById("btnLogout").addEventListener("click", () => {
       localStorage.clear();
       window.location.href = "../index.html";
-    });
-
-    document.getElementById("btnNews").addEventListener("click", () => {
-      window.location.href = "QuanLyTinTuc/quanLyTinTuc.html";
-    });
-
-    document.getElementById("btnUsers").addEventListener("click", () => {
-      window.location.href = "QuanLyNguoiDung/quanLyNguoiDung.html";
-    });
-
-    document.getElementById("btnGames").addEventListener("click", () => {
-      window.location.href = "QuanLyTroChoi/quanLyTroChoi.html";
-    });
-
-    document.getElementById("btnCards").addEventListener("click", () => {
-      window.location.href = "QuanLyTheBai/quanLyTheBai.html";
-    });
-
-    document.getElementById("btnSale").addEventListener("click", () => {
-      window.location.href = "QuanLyMuaBanThe/quanLyMuaBanThe.html";
     });
   </script>
 </body>

@@ -34,7 +34,7 @@ async function createAdmin() {
             .query('SELECT * FROM NguoiDung WHERE TenNguoiDung = @username OR Email = @email');
 
         if (checkExist.recordset.length > 0) {
-            console.error('\n❌ LỖI: Tên đăng nhập hoặc Email này đã tồn tại!');
+            console.error('\nLỖI: Tên đăng nhập hoặc Email này đã tồn tại!');
             return;
         }
 

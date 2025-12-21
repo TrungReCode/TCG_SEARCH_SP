@@ -1,12 +1,9 @@
-/**
- * ====================================================================
- * 1. CẤU HÌNH & KHỞI TẠO (CONFIGURATION)
- * ====================================================================
- */
 const CONFIG = {
     API_BASE: "http://localhost:3000",
     USER_ID: Number(localStorage.getItem("maNguoiDung")) || 0,
-    PLACEHOLDER_IMG: "https://via.placeholder.com/400x300?text=No+Img"
+    PLACEHOLDER_IMG: "https://via.placeholder.com/400x300?text=No+Img",
+    // Cache formatter để tối ưu hiệu năng render danh sách dài
+    CURRENCY_FORMATTER: new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' })
 };
 
 const API = {
@@ -48,25 +45,28 @@ const DOM = {
     formAddWant: document.getElementById('formAddWant'),
     wantSearchInput: document.getElementById('wantSearchInput'),
     wantSearchResults: document.getElementById('wantSearchResults'),
-    // Hidden inputs for form
+    
+    // Inputs
     inputWantMaThe: document.getElementById("wantMaThe"),
     inputWantTieuDe: document.getElementById("wantTieuDe"),
     inputWantHinhAnh: document.getElementById("wantHinhAnh"),
     inputWantImageLink: document.getElementById("wantImageLink"),
     divSelectedWantCard: document.getElementById("selectedWantCard"),
     imgWantCard: document.getElementById("wantCardImg"),
-    lblWantCardName: document.getElementById("wantCardName")
+    lblWantCardName: document.getElementById("wantCardName"),
+    inputWantGia: document.getElementById("wantGia"),
+    inputWantMoTa: document.getElementById("wantMoTa")
 };
 
 /**
  * ====================================================================
- * 2. TIỆN ÍCH (UTILS)
+ * 2. UTILS (TIỆN ÍCH)
  * ====================================================================
  */
 const Utils = {
-    formatCurrency: (amount) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(amount),
+    formatCurrency: (amount) => CONFIG.CURRENCY_FORMATTER.format(amount),
     
-    normalizeText: (s) => (!s && s !== 0) ? '' : s.toString().normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(),
+    normalizeText: (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase(),
 
     fetchData: async (url, options = {}) => {
         try {
@@ -87,17 +87,13 @@ const Utils = {
             document.body.style.overflow = 'hidden';
         },
         hide: (el) => {
-    
             if (!el) return;
             el.classList.remove('flex');
             el.classList.add('hidden');
             document.body.style.overflow = '';
         },
         closeAll: () => {
-            Utils.modal.hide(DOM.modalDetail);
-            Utils.modal.hide(DOM.modalAddWant);
-            Utils.modal.hide(DOM.modalTrans);
-            Utils.modal.hide(DOM.modalMyOrders);
+            [DOM.modalDetail, DOM.modalAddWant, DOM.modalTrans, DOM.modalMyOrders].forEach(Utils.modal.hide);
             if (DOM.cardDetails) DOM.cardDetails.innerHTML = '';
         }
     }
@@ -119,8 +115,9 @@ const Marketplace = {
                 keyword: keyword.trim(),
                 maTroChoi: gameId
             });
-            const data = await Utils.fetchData(`${API.RAO_BAN}/search-combined?${params.toString()}`);
-            const cards = data.data || data || [];
+            
+            const res = await Utils.fetchData(`${API.RAO_BAN}/search-combined?${params}`);
+            const cards = res?.data || res || [];
 
             DOM.cardList.innerHTML = cards.length === 0 
                 ? `<p class="col-span-full text-center py-10 text-gray-400">Không tìm thấy thẻ nào.</p>`
@@ -132,13 +129,15 @@ const Marketplace = {
 
     renderList: (cards) => {
         return cards.map(card => {
-            if (!card.MaRaoBan) return '';
-            const isOwner = Number(card.MaNguoiDung) === CONFIG.USER_ID;
-            const hasActiveOrder = card.TrangThaiDonHang && ['ChoXuLy', 'DaThanhToan', 'DangGiao'].includes(card.TrangThaiDonHang);
-            const isMyOrder = hasActiveOrder && (Number(card.NguoiMuaId) === CONFIG.USER_ID);
-            const normStatus = Utils.normalizeText(card.TinhTrang || '');
+            const { MaRaoBan, MaNguoiDung, TrangThaiDonHang, NguoiMuaId, TinhTrang, GiaBan, HinhAnh, TenTroChoi, TenThe, TenNguoiDung, NgayDang } = card;
+            
+            if (!MaRaoBan) return '';
+            
+            const isOwner = Number(MaNguoiDung) === CONFIG.USER_ID;
+            const hasActiveOrder = TrangThaiDonHang && ['ChoXuLy', 'DaThanhToan', 'DangGiao'].includes(TrangThaiDonHang);
+            const isMyOrder = hasActiveOrder && (Number(NguoiMuaId) === CONFIG.USER_ID);
+            const normStatus = Utils.normalizeText(TinhTrang);
 
-            // Hide sold posts from public marketplace; seller still sees them with a sold label
             if (normStatus === 'daban' && !isOwner) return '';
 
             let btnAction, statusBadge = '', borderClass = 'border border-gray-100', opacityClass = '';
@@ -162,29 +161,29 @@ const Marketplace = {
                 btnAction = `<button disabled class="text-sm bg-gray-300 text-gray-500 px-4 py-1.5 rounded cursor-not-allowed font-medium">Đã có người đặt</button>`;
                 statusBadge = `<div class="absolute top-2 left-2 bg-red-500 text-white px-2 py-1 rounded text-xs font-bold shadow">Đã bán</div>`;
             } else {
-                btnAction = `<button onclick="handlePurchase(${card.MaRaoBan}, ${card.GiaBan})" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded font-bold transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"><i class="fas fa-shopping-cart mr-1"></i> Mua ngay</button>`;
+                btnAction = `<button onclick="handlePurchase(${MaRaoBan}, ${GiaBan})" class="text-sm bg-blue-600 hover:bg-blue-700 text-white px-4 py-1.5 rounded font-bold transition shadow-lg hover:shadow-xl transform hover:-translate-y-0.5"><i class="fas fa-shopping-cart mr-1"></i> Mua ngay</button>`;
             }
 
             return `
                 <div class="bg-white rounded-xl shadow-sm overflow-hidden flex flex-col h-full card-hover-effect ${borderClass} ${opacityClass} relative">
                     ${statusBadge}
-                    <div class="relative cursor-pointer h-52 bg-gray-50 flex items-center justify-center p-2" onclick="fetchCardDetail(${card.MaRaoBan})">
-                        <img src="${card.HinhAnh || CONFIG.PLACEHOLDER_IMG}" class="max-w-full max-h-full object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105">
-                        <div class="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold shadow text-gray-600 border border-gray-200 uppercase tracking-wider">${card.TinhTrang || 'Mới'}</div>
+                    <div class="relative cursor-pointer h-52 bg-gray-50 flex items-center justify-center p-2" onclick="fetchCardDetail(${MaRaoBan})">
+                        <img src="${HinhAnh || CONFIG.PLACEHOLDER_IMG}" class="max-w-full max-h-full object-contain drop-shadow-sm transition-transform duration-300 hover:scale-105" loading="lazy">
+                        <div class="absolute bottom-2 right-2 bg-white/90 backdrop-blur-sm px-2 py-0.5 rounded text-[10px] font-bold shadow text-gray-600 border border-gray-200 uppercase tracking-wider">${TinhTrang || 'Mới'}</div>
                     </div>
                     <div class="p-4 flex flex-col flex-grow">
-                        <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-1">${card.TenTroChoi || 'Trading Card'}</p>
-                        <h3 class="text-base font-bold text-gray-800 leading-snug mb-3 line-clamp-2 cursor-pointer hover:text-blue-600 transition" onclick="fetchCardDetail(${card.MaRaoBan})">${card.TenThe}</h3>
+                        <p class="text-[10px] text-blue-500 font-bold uppercase tracking-widest mb-1">${TenTroChoi || 'Trading Card'}</p>
+                        <h3 class="text-base font-bold text-gray-800 leading-snug mb-3 line-clamp-2 cursor-pointer hover:text-blue-600 transition" onclick="fetchCardDetail(${MaRaoBan})">${TenThe}</h3>
                         <div class="mt-auto pt-3 border-t border-gray-100 flex items-center justify-between gap-2">
                             <div class="flex flex-col">
                                 <span class="text-xs text-gray-400 font-medium">Giá bán</span>
-                                <span class="text-lg font-extrabold text-red-600 leading-none">${Utils.formatCurrency(card.GiaBan)}</span>
+                                <span class="text-lg font-extrabold text-red-600 leading-none">${Utils.formatCurrency(GiaBan)}</span>
                             </div>
                             <div>${btnAction}</div>
                         </div>
                         <div class="mt-2 flex justify-between items-center text-xs text-gray-400">
-                            <span><i class="fas fa-user-circle mr-1"></i> ${card.TenNguoiDung}</span>
-                            <span>${new Date(card.NgayDang).toLocaleDateString('vi-VN')}</span>
+                            <span><i class="fas fa-user-circle mr-1"></i> ${TenNguoiDung}</span>
+                            <span>${new Date(NgayDang).toLocaleDateString('vi-VN')}</span>
                         </div>
                     </div>
                 </div>`;
@@ -197,8 +196,8 @@ const Marketplace = {
         DOM.cardDetails.innerHTML = '<p class="text-center text-blue-500 py-10"><i class="fas fa-spinner fa-spin"></i> Đang tải...</p>';
 
         try {
-            const response = await Utils.fetchData(`${API.RAO_BAN}/detail/${maRaoBan}`);
-            const card = response.data || response;
+            const res = await Utils.fetchData(`${API.RAO_BAN}/detail/${maRaoBan}`);
+            const card = res?.data || res;
             if (!card) throw new Error("No data");
             Marketplace.renderDetail(card);
         } catch (error) {
@@ -207,25 +206,27 @@ const Marketplace = {
     },
 
     renderDetail: (card) => {
-        const isOwner = Number(card.MaNguoiDung) === CONFIG.USER_ID;
+        const { MaNguoiDung, MaRaoBan, GiaBan, TinhTrang, HinhAnh, TenThe, TenTroChoi, TenNguoiDung, MoTaRaoBan } = card;
+        const isOwner = Number(MaNguoiDung) === CONFIG.USER_ID;
+        
         const btnHtml = isOwner
             ? `<button disabled class="w-full bg-gray-300 text-gray-600 font-bold py-3 rounded cursor-not-allowed">Đây là thẻ của bạn</button>`
-            : `<button onclick="handlePurchase(${card.MaRaoBan}, ${card.GiaBan})" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 rounded shadow-lg transform transition hover:-translate-y-1">MUA NGAY VỚI GIÁ ${Utils.formatCurrency(card.GiaBan)}</button>`;
+            : `<button onclick="handlePurchase(${MaRaoBan}, ${GiaBan})" class="w-full bg-gradient-to-r from-green-500 to-green-600 hover:from-green-600 hover:to-green-700 text-white font-bold py-3 rounded shadow-lg transform transition hover:-translate-y-1">MUA NGAY VỚI GIÁ ${Utils.formatCurrency(GiaBan)}</button>`;
 
-        const displayTinhTrang = (card.TinhTrang && Utils.normalizeText(card.TinhTrang) === 'daban') ? 'Thẻ của bạn đã được bán' : (card.TinhTrang || 'Mới');
+        const displayTinhTrang = (Utils.normalizeText(TinhTrang) === 'daban') ? 'Thẻ của bạn đã được bán' : (TinhTrang || 'Mới');
 
         DOM.cardDetails.innerHTML = `
             <div class="flex flex-col md:flex-row gap-6">
                 <div class="w-full md:w-1/3">
-                    <img src="${card.HinhAnh || CONFIG.PLACEHOLDER_IMG}" class="w-full rounded-lg shadow-md object-contain bg-gray-50 border">
+                    <img src="${HinhAnh || CONFIG.PLACEHOLDER_IMG}" class="w-full rounded-lg shadow-md object-contain bg-gray-50 border">
                 </div>
                 <div class="w-full md:w-2/3 flex flex-col">
-                    <h2 class="text-3xl font-extrabold text-gray-900 mb-2">${card.TenThe}</h2>
-                    <p class="text-blue-600 font-medium mb-4">${card.TenTroChoi || 'N/A'}</p>
+                    <h2 class="text-3xl font-extrabold text-gray-900 mb-2">${TenThe}</h2>
+                    <p class="text-blue-600 font-medium mb-4">${TenTroChoi || 'N/A'}</p>
                     <div class="bg-gray-50 p-4 rounded-lg border border-gray-100 mb-6 space-y-2">
                         <div class="flex justify-between border-b border-gray-200 pb-2">
                             <span class="text-gray-500">Giá bán:</span>
-                            <span class="text-2xl font-bold text-red-600">${Utils.formatCurrency(card.GiaBan)}</span>
+                            <span class="text-2xl font-bold text-red-600">${Utils.formatCurrency(GiaBan)}</span>
                         </div>
                         <div class="flex justify-between pt-2">
                             <span class="text-gray-500">Tình trạng:</span>
@@ -233,12 +234,12 @@ const Marketplace = {
                         </div>
                         <div class="flex justify-between pt-2">
                             <span class="text-gray-500">Người bán:</span>
-                            <span class="font-bold">${card.TenNguoiDung}</span>
+                            <span class="font-bold">${TenNguoiDung}</span>
                         </div>
                     </div>
                     <div class="prose text-gray-600 mb-6">
                         <h4 class="font-bold text-gray-800">Mô tả người bán:</h4>
-                        <p>${card.MoTaRaoBan || 'Không có mô tả chi tiết.'}</p>
+                        <p>${MoTaRaoBan || 'Không có mô tả chi tiết.'}</p>
                     </div>
                     <div class="mt-auto">${btnHtml}</div>
                 </div>
@@ -248,14 +249,15 @@ const Marketplace = {
     fetchGames: async () => {
         try {
             const data = await Utils.fetchData(API.GAMES);
-            const list = Array.isArray(data) ? data : (data.data || []);
-            const buildOptions = (id) => {
-                if(!id) return;
-                id.innerHTML = '<option value="">-- Tất cả Trò chơi --</option>';
-                list.forEach(g => id.innerHTML += `<option value="${g.MaTroChoi}">${g.TenTroChoi}</option>`);
-            };
-            buildOptions(DOM.gameFilter);
-            buildOptions(DOM.wantGameFilter);
+            const list = Array.isArray(data) ? data : (data?.data || []);
+            
+            const createOptions = (games) => 
+                `<option value="">-- Tất cả Trò chơi --</option>` + 
+                games.map(g => `<option value="${g.MaTroChoi}">${g.TenTroChoi}</option>`).join('');
+
+            const html = createOptions(list);
+            if(DOM.gameFilter) DOM.gameFilter.innerHTML = html;
+            if(DOM.wantGameFilter) DOM.wantGameFilter.innerHTML = html;
         } catch (e) { console.error(e); }
     }
 };
@@ -280,31 +282,32 @@ const Buying = {
 
     renderList: (items) => {
         return items.map(item => {
-            const isOwner = Number(item.MaNguoiDung) === CONFIG.USER_ID;
-            const priceDisplay = item.GiaMongMuon > 0 ? Utils.formatCurrency(item.GiaMongMuon) : "Thỏa thuận";
+            const { MaNguoiDung, GiaMongMuon, MaCanMua, DaLienHe, HinhAnhHienThi, TieuDe, TenNguoiDung, MoTa } = item;
+            const isOwner = Number(MaNguoiDung) === CONFIG.USER_ID;
+            const priceDisplay = GiaMongMuon > 0 ? Utils.formatCurrency(GiaMongMuon) : "Thỏa thuận";
             let contactBtn, actionArea = '';
 
             if (isOwner) {
                 contactBtn = `<span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-1 rounded">Tin của bạn</span>`;
-                actionArea = `<button onclick="closeMyWant(${item.MaCanMua})" class="text-xs bg-gray-200 hover:bg-red-100 hover:text-red-600 text-gray-600 px-2 py-1 rounded ml-2" title="Đóng tin"><i class="fas fa-times-circle"></i> Đóng</button>`;
-            } else if (item.DaLienHe === 1) {
+                actionArea = `<button onclick="closeMyWant(${MaCanMua})" class="text-xs bg-gray-200 hover:bg-red-100 hover:text-red-600 text-gray-600 px-2 py-1 rounded ml-2" title="Đóng tin"><i class="fas fa-times-circle"></i> Đóng</button>`;
+            } else if (DaLienHe === 1) {
                 contactBtn = `<button disabled class="text-xs border border-orange-300 text-orange-600 bg-orange-50 px-2 py-1 rounded cursor-not-allowed font-medium"><i class="fas fa-clock"></i> Đang chờ xử lý</button>`;
             } else {
-                contactBtn = `<button onclick="handleContactRequest(${item.MaCanMua})" class="text-xs border border-cyan-500 text-cyan-600 px-2 py-1 rounded hover:bg-cyan-50 font-medium transition"><i class="fas fa-handshake"></i> Liên hệ bán</button>`;
+                contactBtn = `<button onclick="handleContactRequest(${MaCanMua})" class="text-xs border border-cyan-500 text-cyan-600 px-2 py-1 rounded hover:bg-cyan-50 font-medium transition"><i class="fas fa-handshake"></i> Liên hệ bán</button>`;
             }
 
             return `
                 <div class="bg-white rounded-xl shadow-sm border border-cyan-100 overflow-hidden card-hover-effect flex flex-col h-full">
                     <div class="relative w-full h-48 bg-gray-50">
-                        <img src="${item.HinhAnhHienThi || CONFIG.PLACEHOLDER_IMG}" class="w-full h-full object-cover sm:object-contain p-1">
+                        <img src="${HinhAnhHienThi || CONFIG.PLACEHOLDER_IMG}" class="w-full h-full object-cover sm:object-contain p-1" loading="lazy">
                         <span class="absolute top-0 left-0 bg-cyan-600 text-white text-xs px-2 py-1 rounded-br font-bold shadow-sm">CẦN MUA</span>
                         <div class="absolute top-0 right-0 p-1">${actionArea}</div>
                     </div>
                     <div class="p-3 flex flex-col flex-grow">
-                        <h5 class="text-md font-bold text-gray-800 line-clamp-2 mb-1">${item.TieuDe}</h5>
-                        <p class="text-xs text-gray-500 mb-2"><i class="fas fa-user-circle"></i> ${item.TenNguoiDung}</p>
+                        <h5 class="text-md font-bold text-gray-800 line-clamp-2 mb-1">${TieuDe}</h5>
+                        <p class="text-xs text-gray-500 mb-2"><i class="fas fa-user-circle"></i> ${TenNguoiDung}</p>
                         <div class="bg-gray-50 p-2 rounded mb-3 flex-grow border border-gray-100">
-                            <p class="text-xs text-gray-700 line-clamp-3">${item.MoTa || 'Không có mô tả chi tiết.'}</p>
+                            <p class="text-xs text-gray-700 line-clamp-3">${MoTa || 'Không có mô tả chi tiết.'}</p>
                         </div>
                         <div class="flex justify-between items-center mt-auto pt-3 border-t border-gray-100">
                             <span class="text-lg font-bold text-cyan-700">${priceDisplay}</span>
@@ -319,11 +322,13 @@ const Buying = {
         if (!CONFIG.USER_ID) return;
         try {
             const data = await Utils.fetchData(`${API.BUYING}/match/${CONFIG.USER_ID}`);
-            if (data.success && data.matches && data.matches.length > 0) {
-                if (DOM.matchSection) DOM.matchSection.classList.remove("hidden");
-                if (DOM.matchCount) DOM.matchCount.textContent = data.matches.length;
+            const matches = data?.matches || [];
+            
+            if (data.success && matches.length > 0) {
+                DOM.matchSection?.classList.remove("hidden");
+                if (DOM.matchCount) DOM.matchCount.textContent = matches.length;
                 if (DOM.matchList) {
-                    DOM.matchList.innerHTML = data.matches.map(m => `
+                    DOM.matchList.innerHTML = matches.map(m => `
                         <div class="bg-white p-3 rounded border-l-4 border-green-500 shadow-sm flex justify-between items-center">
                             <div>
                                 <p class="text-sm text-gray-600">Bạn cần: <strong class="text-gray-800">${m.TenThe}</strong> (${Utils.formatCurrency(m.GiaMongMuon)})</p>
@@ -334,12 +339,11 @@ const Buying = {
                     `).join('');
                 }
             } else {
-                if (DOM.matchSection) DOM.matchSection.classList.add("hidden");
+                DOM.matchSection?.classList.add("hidden");
             }
         } catch (err) { console.warn("Matching check failed:", err); }
     },
 
-    // Modal & Form Logic for Adding Wants
     openModal: () => {
         if (!CONFIG.USER_ID) return alert("Vui lòng đăng nhập để đăng tin!");
         Utils.modal.show(DOM.modalAddWant);
@@ -355,7 +359,8 @@ const Buying = {
             const params = new URLSearchParams({ q: keyword });
             if (selectedGame) params.append('MaTroChoi', selectedGame);
             
-            const data = await Utils.fetchData(`${API.CARDS}/search?${params.toString()}`);
+            const data = await Utils.fetchData(`${API.CARDS}/search?${params}`);
+            
             if (!data || data.length === 0) {
                 DOM.wantSearchResults.innerHTML = '<p class="text-red-500 text-center p-2">Không tìm thấy thẻ.</p>';
                 return;
@@ -395,9 +400,9 @@ const Buying = {
             MaNguoiDung: CONFIG.USER_ID,
             MaThe: DOM.inputWantMaThe.value || null,
             TieuDe: DOM.inputWantTieuDe.value,
-            GiaMongMuon: document.getElementById("wantGia").value,
+            GiaMongMuon: DOM.inputWantGia.value,
             HinhAnh: DOM.inputWantImageLink.value,
-            MoTa: document.getElementById("wantMoTa").value
+            MoTa: DOM.inputWantMoTa.value
         };
 
         try {
@@ -435,30 +440,23 @@ const Buying = {
  * ====================================================================
  */
 const Orders = {
-    // 1. Thêm biến lưu trữ cache
     cacheData: null,
     lastFetchTime: 0,
-    CACHE_DURATION: 60000, // 60 giây mới tự động tải lại
+    CACHE_DURATION: 60000, 
 
     openModal: () => {
         if (!CONFIG.USER_ID) return alert("Vui lòng đăng nhập để xem đơn hàng!");
         Utils.modal.show(DOM.modalMyOrders);
         
-        // 2. Logic kiểm tra cache
         const now = Date.now();
         if (Orders.cacheData && (now - Orders.lastFetchTime < Orders.CACHE_DURATION)) {
-            // Nếu có cache và chưa hết hạn, render ngay lập tức (không gọi API)
-            console.log("Loading orders from cache...");
             Orders.renderTable(Orders.cacheData);
         } else {
-            // Nếu không, tải mới
             Orders.fetchList();
         }
     },
 
-    // Thêm tham số forceReload để ép tải lại khi cần (VD: sau khi hủy đơn)
     fetchList: async (forceReload = false) => {
-        // Hiển thị loading (chỉ khi không dùng cache)
         DOM.myOrdersBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-blue-500"><i class="fas fa-spinner fa-spin"></i> Đang cập nhật dữ liệu...</td></tr>';
         DOM.myOrdersEmpty.classList.add('hidden');
 
@@ -466,7 +464,6 @@ const Orders = {
             const res = await Utils.fetchData(`${API.ORDERS}/my-orders?maNguoiDung=${CONFIG.USER_ID}`);
             const orders = res.data || [];
             
-            // 3. Lưu vào cache và cập nhật thời gian
             Orders.cacheData = orders;
             Orders.lastFetchTime = Date.now();
 
@@ -475,12 +472,9 @@ const Orders = {
                 DOM.myOrdersEmpty.classList.remove('hidden');
             } else {
                 Orders.renderTable(orders);
-                // After rendering orders, refresh marketplace and matching so completed orders
-                // that triggered removal of selling posts are reflected in the UI.
-                try {
-                    Buying.checkMatches();
-                    Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value);
-                } catch (e) { console.warn('Failed to refresh matching/list:', e); }
+                // Refresh related lists silently
+                Buying.checkMatches().catch(() => {});
+                Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value).catch(() => {});
             }
         } catch (err) {
             DOM.myOrdersBody.innerHTML = '<tr><td colspan="5" class="text-center py-4 text-red-500">Lỗi tải dữ liệu. <button onclick="Orders.fetchList(true)" class="underline">Thử lại</button></td></tr>';
@@ -488,10 +482,7 @@ const Orders = {
     },
 
     renderTable: (orders) => {
-        // 4. Sử dụng map và join là tốt, nhưng thêm nút "Làm mới" ở header bảng để user chủ động
-        // (Bạn cần thêm nút này vào HTML modalMyOrders nếu muốn, hoặc gọi Orders.fetchList(true))
-        
-        const html = orders.map(order => {
+        DOM.myOrdersBody.innerHTML = orders.map(order => {
             const isBuy = order.LoaiGiaoDich === 'MUA';
             const typeBadge = isBuy 
                 ? `<span class="bg-blue-100 text-blue-800 px-2 py-1 rounded text-xs font-bold">Mua thẻ</span>`
@@ -501,6 +492,7 @@ const Orders = {
             const price = order.GiaHienThi ? Utils.formatCurrency(order.GiaHienThi) : 'Thỏa thuận';
             
             let statusBadge = '', cancelBtn = '';
+            
             switch (order.TrangThai) {
                 case 'ChoXuLy':
                     statusBadge = `<span class="text-yellow-600 bg-yellow-50 px-2 py-1 rounded border border-yellow-200 text-xs font-bold"><i class="fas fa-clock"></i> Chờ xử lý</span>`;
@@ -524,7 +516,8 @@ const Orders = {
                     <td class="px-5 py-4">${typeBadge}</td>
                     <td class="px-5 py-4">
                         <div class="flex items-center gap-3">
-                            <img src="${imgSrc}" class="w-10 h-14 object-cover rounded border bg-white" loading="lazy"> <div>
+                            <img src="${imgSrc}" class="w-10 h-14 object-cover rounded border bg-white" loading="lazy"> 
+                            <div>
                                 <div class="font-bold text-gray-800 text-sm line-clamp-1 w-48" title="${order.TenTheHienThi}">${order.TenTheHienThi || 'N/A'}</div>
                                 <div class="text-xs text-gray-500">${price}</div>
                             </div>
@@ -534,8 +527,6 @@ const Orders = {
                     <td class="px-5 py-4 text-center">${cancelBtn}</td>
                 </tr>`;
         }).join('');
-        
-        DOM.myOrdersBody.innerHTML = html;
     },
 
     cancel: async (id) => {
@@ -547,11 +538,7 @@ const Orders = {
             });
             if (res.success) {
                 alert("Đã hủy đơn hàng thành công!");
-                // 5. Quan trọng: Sau khi hủy, phải ép tải lại dữ liệu mới
-                try { await Orders.fetchList(true); } catch (e) { console.warn('Reload orders failed:', e); }
-
-                // Cập nhật các list bên ngoài nếu cần
-                Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value);
+                Orders.fetchList(true);
             } else { alert("Lỗi: " + res.error); }
         } catch (err) { alert("Lỗi hệ thống khi hủy đơn."); }
     }
@@ -581,11 +568,11 @@ const Transaction = {
             if (data.success) {
                 Utils.modal.closeAll();
                 Transaction.showModal(data.adminInfo, `MUA DH${data.orderId}`);
-                Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value);
-                // Reload matching immediately so the buyer's matching view is up-to-date
-                try { Buying.checkMatches(); } catch (e) { console.warn('Reload matching failed:', e); }
-                // Reload user's orders so the 'Đơn hàng của tôi' view is up-to-date
-                try { await Orders.fetchList(true); } catch (e) { console.warn('Reload orders failed:', e); }
+                
+                // Refresh data
+                Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value).catch(() => {});
+                Buying.checkMatches().catch(() => {});
+                Orders.fetchList(true).catch(() => {});
             } else {
                 alert("THÔNG BÁO: " + data.error);
                 Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value);
@@ -610,7 +597,10 @@ const Transaction = {
                 Transaction.showModal(data.adminInfo, `BAN THE YEU CAU #${maCanMua}`);
                 btn.className = "text-xs border border-orange-300 text-orange-600 bg-orange-50 px-2 py-1 rounded cursor-not-allowed";
                 btn.innerHTML = '<i class="fas fa-clock"></i> Đang chờ xử lý';
-            } else { alert("THÔNG BÁO: " + data.error); }
+            } else { 
+                alert("THÔNG BÁO: " + data.error);
+                btn.disabled = false; btn.innerHTML = originalContent;
+            }
         } catch (err) { 
             alert("Lỗi kết nối hệ thống");
             btn.disabled = false; btn.innerHTML = originalContent;
@@ -618,7 +608,7 @@ const Transaction = {
     },
 
     showModal: (adminInfo, contentMsg) => {
-        let zaloNumber = (adminInfo && adminInfo.zalo) ? adminInfo.zalo : "0327734880"; 
+        const zaloNumber = adminInfo?.zalo ?? "0327734880"; 
         
         if (DOM.btnZaloContact && DOM.txtZaloPhone) {
             DOM.btnZaloContact.href = `https://zalo.me/${zaloNumber}`;
@@ -635,8 +625,7 @@ const Transaction = {
  * 7. GLOBAL EXPORTS & EVENT LISTENERS
  * ====================================================================
  */
-
-// Global functions for HTML onclick attributes
+// Export functions for HTML onclick
 window.fetchCardDetail = Marketplace.fetchDetail;
 window.handlePurchase = Transaction.handlePurchase;
 window.handleContactRequest = Transaction.handleContactRequest;
@@ -650,14 +639,12 @@ window.closeMyWant = Buying.closeWant;
 window.openMyOrdersModal = Orders.openModal;
 window.cancelMyOrder = Orders.cancel;
 
-// Event Listeners
 document.addEventListener('DOMContentLoaded', () => {
     Marketplace.fetchGames();
     Marketplace.fetchList();
     Buying.fetchList();
     Buying.checkMatches();
 
-    // Debounce search
     let searchTimeout;
     const handleFilterChange = () => {
         clearTimeout(searchTimeout);
@@ -666,7 +653,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 500);
     };
 
-    if (DOM.searchInput) DOM.searchInput.addEventListener('input', handleFilterChange);
-    if (DOM.gameFilter) DOM.gameFilter.addEventListener('change', handleFilterChange);
-    if (DOM.formAddWant) DOM.formAddWant.addEventListener("submit", Buying.submitForm);
+    DOM.searchInput?.addEventListener('input', handleFilterChange);
+    DOM.gameFilter?.addEventListener('change', handleFilterChange);
+    DOM.formAddWant?.addEventListener("submit", Buying.submitForm);
 });

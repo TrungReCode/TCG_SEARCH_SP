@@ -14,7 +14,7 @@ if (!currentUserId) {
 }
 
 document.addEventListener("DOMContentLoaded", () => {
-    fetchSalesList(); // Load danh sách ngay khi vào trang
+    fetchSalesList();
 });
 
 // =====================================================================
@@ -43,11 +43,10 @@ async function fetchSalesList() {
 
         data.forEach(item => {
             let statusClass = "bg-gray-100 text-gray-600";
-            // normalize status text for checks
+
             const rawStatus = (item.TinhTrang || '').toString();
             const statusNorm = rawStatus.toLowerCase();
 
-            // If marked as sold in DB, show friendly label
             let displayStatus = rawStatus;
             if (statusNorm === 'daban' || statusNorm.includes('daban')) {
                 displayStatus = 'Đã được bán';
@@ -55,7 +54,6 @@ async function fetchSalesList() {
             } else if (rawStatus.includes("Mới")) statusClass = "bg-green-100 text-green-700";
             else if (rawStatus.includes("Cũ")) statusClass = "bg-red-100 text-red-700";
 
-            // [FIX] Dùng placehold.co
             const imgSrc = item.HinhAnh || 'https://placehold.co/300?text=No+Img';
 
             const cardHTML = `
@@ -256,8 +254,6 @@ function resetSelection() {
     // Reset ảnh preview về placeholder, nhưng KHÔNG xóa giá hay mô tả người dùng đã nhập
     document.getElementById("finalPreviewImg").src = "https://placehold.co/40";
     document.getElementById("addHinhAnh").value = "";
-    
-    // Lưu ý: Không còn code ẩn/hiện div 'sellDetails' nữa
 }
 
 function updatePreviewImage(url) {

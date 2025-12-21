@@ -31,7 +31,7 @@
       const username = this.username.value.trim();
       const email = this.email.value.trim();
       const password = this.password.value;
-      const phone = document.getElementById("regPhone").value.trim(); // <--- LẤY SỐ ĐIỆN THOẠI
+      const phone = document.getElementById("regPhone").value.trim();
 
       // 2. Gửi về Server
       try {
@@ -39,15 +39,14 @@
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            // QUAN TRỌNG: Tên key phải khớp với Backend (routes/auth.js)
             TenNguoiDung: username, 
             Email: email,
             MatKhau: password,
-            SoDienThoai: phone  // <--- GỬI KÈM SỐ ĐIỆN THOẠI
+            SoDienThoai: phone
           })
         });
 
-        const data = await res.json(); // Backend trả về JSON, nên dùng .json()
+        const data = await res.json();
 
         if (!res.ok) {
           throw new Error(data.error || "Đăng ký thất bại");

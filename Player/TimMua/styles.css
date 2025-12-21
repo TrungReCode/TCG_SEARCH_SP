@@ -1,7 +1,12 @@
-/* style.css */
+:root {
+    --scrollbar-width: 8px;
+    --scrollbar-bg: #f1f1f1;
+    --scrollbar-thumb: #cbd5e1;
+    --scrollbar-thumb-hover: #94a3b8;
+    --anim-speed: 0.3s;
+}
 
-/* Animation cho Matching Box */
-@keyframes fadeInDown {
+@keyframes slideDownFade {
     from {
         opacity: 0;
         transform: translateY(-20px);
@@ -12,30 +17,58 @@
     }
 }
 
-.animate-fade-in {
-    animation: fadeInDown 0.5s ease-out;
+@keyframes popIn {
+    from {
+        opacity: 0;
+        transform: scale(0.95);
+    }
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
 }
 
-/* Scrollbar tùy chỉnh cho đẹp */
+.animate-slide-down {
+    animation: slideDownFade 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-pop-in {
+    animation: popIn var(--anim-speed) ease-out forwards;
+}
+
 ::-webkit-scrollbar {
-    width: 8px;
-}
-::-webkit-scrollbar-track {
-    background: #f1f1f1; 
-}
-::-webkit-scrollbar-thumb {
-    background: #c1c1c1; 
-    border-radius: 4px;
-}
-::-webkit-scrollbar-thumb:hover {
-    background: #a8a8a8; 
+    width: var(--scrollbar-width);
+    height: var(--scrollbar-width);
 }
 
-/* Card Hover Effect */
-.card-hover-effect {
-    transition: all 0.3s ease;
+::-webkit-scrollbar-track {
+    background: var(--scrollbar-bg);
 }
+
+::-webkit-scrollbar-thumb {
+    background: var(--scrollbar-thumb);
+    border-radius: 4px;
+    border: 2px solid var(--scrollbar-bg);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--scrollbar-thumb-hover);
+}
+
+/* Class riêng nếu muốn custom cục bộ */
+.custom-scrollbar {
+    overflow-y: auto;
+}
+
+.card-hover-effect {
+    transition: transform var(--anim-speed) ease, box-shadow var(--anim-speed) ease;
+    will-change: transform; /* Tối ưu GPU */
+    backface-visibility: hidden; /* Chống mờ text khi transform */
+}
+
 .card-hover-effect:hover {
     transform: translateY(-5px);
-    box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
+    box-shadow: 0 10px 20px -5px rgba(0, 0, 0, 0.15), 
+                0 4px 6px -2px rgba(0, 0, 0, 0.05);
+    z-index: 10; /* Đảm bảo card nổi lên trên các phần tử khác */
 }

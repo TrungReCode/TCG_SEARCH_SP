@@ -77,7 +77,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!res.ok) throw new Error(`HTTP ${res.status} - ${res.statusText}`);
             const card = await res.json();
 
-            // Parse ThuocTinh nếu là JSON
             let attrs = {};
             try {
                 if (card.ThuocTinh) {

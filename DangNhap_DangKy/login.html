@@ -35,7 +35,6 @@
         const res = await fetch("http://localhost:3000/login", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          // [SỬA 1]: Đổi key gửi đi cho khớp với Database/Backend
           body: JSON.stringify({ 
             TenNguoiDung: username, 
             MatKhau: password 
@@ -48,18 +47,16 @@
           throw new Error(data.error || "Sai tên người dùng hoặc mật khẩu");
         }
 
-        // [SỬA 2]: Đổi key nhận về (SQL Server trả về viết hoa chữ đầu)
         // Lưu ý: data.user chứa thông tin user trả về từ backend
-        const user = data.user || data; // Tùy backend trả về {user: ...} hay {...}
+        const user = data.user || data;
 
         localStorage.setItem("username", user.TenNguoiDung);
         localStorage.setItem("maNguoiDung", user.MaNguoiDung); 
-        localStorage.setItem("vaitro", user.VaiTro); // SQL trả về bit (0 hoặc 1) hoặc true/false
+        localStorage.setItem("vaitro", user.VaiTro);
 
         alert("Đăng nhập thành công! Xin chào " + user.TenNguoiDung);
 
         // Chuyển hướng dựa trên vai trò
-        // VaiTro trong SQL bit: 1 là Admin, 0 là User
         if (Number(user.VaiTro) === 1 || user.VaiTro === true) {
           window.location.href = "/QuanTriVien/admin.html";
         } else {

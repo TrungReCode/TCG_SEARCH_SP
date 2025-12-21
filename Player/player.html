@@ -4,29 +4,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>TCG Hub</title>
+  <title>TCG Hub - Dashboard</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
   <div class="container">
 
-    <div class="auth-buttons">
-      <button id="btnLogout" class="auth-btn">Đăng xuất</button>
+    <div class="navbar">
+      <div class="nav-left">
+        <button id="btnCollection" class="btn btn-primary">Bộ sưu tập</button>
+        <button id="btnSaleList" class="btn btn-primary">Danh sách rao bán</button>
+        <button id="btnFindSale" class="btn btn-primary">Tìm mua thẻ</button>
+      </div>
+      <div class="nav-right">
+        <button id="btnLogout" class="btn btn-danger">Đăng xuất</button>
+      </div>
     </div>
-    <div class="collection-buttons">
-      <button id="btnCollection" class="collection-btn">Bộ sưu tập</button>
-    </div>
-    <div class="salelist-buttons">
-      <button id="btnSaleList" class="salelist-btn">Danh sách rao bán</button>
-    </div>
-    <div class="salelist-buttons">
-      <button id="btnFindSale" class="salelist-btn">Tìm mua thẻ</button>
-    </div>
+    
     <div class="card-surface hub">
       <div class="hub-left">
         <div class="hub-logo">
-          <img src="../SrcPicture/tcglogo.jpg" alt="TCG Hub">
+          <img src="../SrcPicture/tcglogo.jpg" alt="TCG Hub" onerror="this.style.display='none'">
         </div>
         <div class="hub-title">TCG Card Browser</div>
       </div>
@@ -42,6 +41,8 @@
     </div>
 
   </div>
+
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/dompurify/3.0.6/purify.min.js"></script>
   <script src="script.js"></script>
 </body>
 

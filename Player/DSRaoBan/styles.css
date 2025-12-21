@@ -291,6 +291,19 @@ h1 {
     border-radius: 4px;
 }
 
+/* Tùy chỉnh thanh cuộn */
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background-color: #cbd5e1;
+    border-radius: 4px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background-color: #f1f5f9;
+}
 
 /* ======================================================= */
 /* MEDIA QUERIES (RESPONSIVE DESIGN)                       */
@@ -302,7 +315,6 @@ h1 {
     /* Điều chỉnh Body/Container */
     body {
         padding: 10px;
-        /* Giảm padding tổng thể */
     }
 
     h1 {
@@ -313,7 +325,6 @@ h1 {
     header {
         flex-direction: column;
         align-items: stretch;
-        /* Kéo giãn các item theo chiều ngang */
         gap: 10px;
     }
 
