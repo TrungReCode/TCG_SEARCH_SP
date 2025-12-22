@@ -65,37 +65,36 @@ router.get("/search", async (req, res) => {
             
             const finalAddCards = allApiCards.slice(0, neededLimit - cards.length);
             
-            // 3. THỰC HIỆN BATCH INSERT (Sử dụng Promise.all để cải thiện hiệu suất)
+            // 3. THỰC HIỆN BATCH INSERT (Sequential trong Transaction, tránh xung đột tham số)
             if (finalAddCards.length > 0) {
-                 const transaction = new sql.Transaction(pool);
-                 await transaction.begin();
+                const transaction = new sql.Transaction(pool);
+                await transaction.begin();
 
-                 try {
-                     const insertRequest = new sql.Request(transaction);
-                     
-                     // Tạo các Promises cho từng lệnh INSERT (IF NOT EXISTS)
-                     const insertPromises = finalAddCards.map(card => {
-                         return insertRequest
+                try {
+                    for (let i = 0; i < finalAddCards.length; i++) {
+                        const card = finalAddCards[i];
+                        const request = new sql.Request(transaction); // Tạo request mới cho mỗi lệnh trong transaction
+
+                        await request
                             .input("MaTroChoi", sql.Int, card.MaTroChoi)
-                            .input(`TenThe_${card.TenThe}`, sql.NVarChar, card.TenThe) // Dùng tên input độc nhất để tránh xung đột
-                            .input(`HinhAnh_${card.TenThe}`, sql.NVarChar, card.HinhAnh)
-                            .input(`MoTa_${card.TenThe}`, sql.NVarChar, card.MoTa)
-                            .input(`ThuocTinh_${card.TenThe}`, sql.NVarChar, card.ThuocTinh)
-                            .input(`Gia_${card.TenThe}`, sql.Decimal(10, 2), card.Gia)
+                            .input("TenThe", sql.NVarChar, card.TenThe)
+                            .input("HinhAnh", sql.NVarChar, card.HinhAnh)
+                            .input("MoTa", sql.NVarChar, card.MoTa)
+                            .input("ThuocTinh", sql.NVarChar, card.ThuocTinh)
+                            .input("Gia", sql.Decimal(10, 2), card.Gia)
                             .query(`
-                                IF NOT EXISTS (SELECT 1 FROM TheBai WHERE TenThe=@TenThe_${card.TenThe} AND MaTroChoi=@MaTroChoi)
+                                IF NOT EXISTS (SELECT 1 FROM TheBai WHERE TenThe=@TenThe AND MaTroChoi=@MaTroChoi)
                                 INSERT INTO TheBai (MaTroChoi, TenThe, HinhAnh, MoTa, ThuocTinh, Gia)
-                                VALUES (@MaTroChoi, @TenThe_${card.TenThe}, @HinhAnh_${card.TenThe}, @MoTa_${card.TenThe}, @ThuocTinh_${card.TenThe}, @Gia_${card.TenThe})
+                                VALUES (@MaTroChoi, @TenThe, @HinhAnh, @MoTa, @ThuocTinh, @Gia)
                             `);
-                     });
-                     
-                     await Promise.all(insertPromises); 
-                     await transaction.commit();
-                 } catch (e) {
-                     await transaction.rollback();
-                     console.error("Lỗi Batch Insert API Cards:", e);
-                     // Rollback và tiếp tục, không ảnh hưởng đến kết quả tìm kiếm đã có
-                 }
+                    }
+
+                    await transaction.commit();
+                } catch (e) {
+                    await transaction.rollback();
+                    console.error("Lỗi Batch Insert:", e);
+                    // Rollback và tiếp tục, không ảnh hưởng đến kết quả tìm kiếm đã có
+                }
             }
             
             // 4. LẤY LẠI TỪ DB sau khi insert
@@ -123,26 +122,71 @@ router.get("/search", async (req, res) => {
 // ================== DANH SÁCH THẺ ==================
 router.get("/", async (req, res) => {
     try {
+        console.log("GET /cards - Fetching card list (paginated)...");
         const pool = await connectDB();
-        const result = await pool.request().query(`
+
+        // Pagination + optional filter by MaTroChoi
+        const rawLimit = Number.parseInt(req.query.limit, 10);
+        const rawOffset = Number.parseInt(req.query.offset, 10);
+        const MaTroChoi = req.query.MaTroChoi ? Number.parseInt(req.query.MaTroChoi, 10) : null;
+
+        const limit = Number.isFinite(rawLimit) && rawLimit > 0 ? Math.min(rawLimit, 200) : 70; // default 70, cap 200
+        const offset = Number.isFinite(rawOffset) && rawOffset >= 0 ? rawOffset : 0;
+
+        const baseSelect = `
             SELECT tb.MaThe, tb.TenThe, tb.HinhAnh, tb.MoTa, tb.ThuocTinh, tb.Gia, tb.MaTroChoi, tb.NgayCapNhat,
-                    tc.TenTroChoi, tc.MaLoai
+                   tc.TenTroChoi, tc.MaLoai
             FROM TheBai tb
             INNER JOIN TroChoi tc ON tb.MaTroChoi = tc.MaTroChoi
-            ORDER BY tb.MaThe DESC
-        `);
+        `;
 
-        // Parse ThuocTinh JSON
-        const cards = result.recordset.map(c => {
+        const whereClause = MaTroChoi ? "WHERE tb.MaTroChoi = @MaTroChoi" : "";
+
+        // Count total for pagination
+        const countQuery = `SELECT COUNT(1) AS Total FROM TheBai tb ${MaTroChoi ? "WHERE tb.MaTroChoi = @MaTroChoi" : ""}`;
+
+        const request = pool.request();
+        if (MaTroChoi) request.input("MaTroChoi", sql.Int, MaTroChoi);
+        request.input("limit", sql.Int, limit).input("offset", sql.Int, offset);
+
+        const countResult = await request.query(countQuery);
+        const total = countResult.recordset?.[0]?.Total || 0;
+
+        // Data page
+        const dataQuery = `
+            ${baseSelect}
+            ${whereClause}
+            ORDER BY tb.MaThe DESC
+            OFFSET @offset ROWS FETCH NEXT @limit ROWS ONLY
+        `;
+        const pageResult = await request.query(dataQuery);
+
+        // Parse ThuocTinh JSON với error handling tốt hơn
+        const cards = (pageResult.recordset || []).map(c => {
             let attrs = {};
-            try { if (c.ThuocTinh) attrs = JSON.parse(c.ThuocTinh); } catch { }
+            try {
+                if (c.ThuocTinh && typeof c.ThuocTinh === 'string') {
+                    attrs = JSON.parse(c.ThuocTinh);
+                } else if (typeof c.ThuocTinh === 'object' && c.ThuocTinh !== null) {
+                    attrs = c.ThuocTinh;
+                }
+            } catch (e) {
+                try {
+                    const preview = typeof c.ThuocTinh === 'string' ? c.ThuocTinh.substring(0, 100) : '';
+                    console.error(`Lỗi parse JSON cho thẻ ${c.MaThe}:`, e.message, 'Data:', preview);
+                } catch {}
+            }
             return { ...c, ThuocTinh: attrs };
         });
 
-        res.json({ success: true, data: cards });
+        const hasMore = offset + cards.length < total;
+        res.json({ success: true, data: cards, page: { total, limit, offset, hasMore } });
     } catch (err) {
-        console.error(err);
-        res.status(500).json({ error: "Lỗi server" });
+        console.error("=== Lỗi GET /cards ===");
+        console.error("Error name:", err.name);
+        console.error("Error message:", err.message);
+        console.error("Stack trace:", err.stack);
+        res.status(500).json({ error: "Lỗi server khi lấy danh sách thẻ", details: err.message });
     }
 });
 

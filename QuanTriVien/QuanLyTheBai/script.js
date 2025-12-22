@@ -33,8 +33,12 @@ document.addEventListener("DOMContentLoaded", () => {
     const addSelectedGameId = document.getElementById("add-selected-game-id");
     const searchSelectedGameId = document.getElementById("search-selected-game-id");
     
-    // Lưu trữ ID game hiện tại để duy trì trạng thái tìm kiếm sau khi tải lại
+    // State management
     let currentSelectedGameId = null;
+    let displayedCards = []; // Danh sách thẻ đang hiển thị (theo trang)
+    let pag = { limit: 70, offset: 0, total: 0, hasMore: false }; // Trạng thái phân trang
+    let isSearchMode = false; // Đang ở chế độ tìm kiếm hay không
+    let searchDebounceTimer = null;
 
     // =========================================================
     // I. HÀM TIỆN ÍCH
@@ -72,19 +76,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 option.textContent = `${game.TenTroChoi} (ID: ${game.MaTroChoi})`;
                 gameSelector.appendChild(option);
             });
-
-            // Nếu có game và chưa có game nào được chọn, chọn game đầu tiên
-            if (games.length > 0 && !currentSelectedGameId) {
-                currentSelectedGameId = games[0].MaTroChoi;
-            }
             
-            // Duy trì trạng thái chọn game
+            // Duy trì trạng thái chọn game nếu đã có game được chọn trước đó
             if (currentSelectedGameId) {
                 gameSelector.value = currentSelectedGameId;
                 updateSelectedGame(currentSelectedGameId);
+                loadCards();
             }
-            
-            // Sau khi tải games xong, gọi loadCards lần đầu
 
         } catch (error) {
             console.error("Lỗi tải danh sách trò chơi:", error);
@@ -102,8 +100,8 @@ document.addEventListener("DOMContentLoaded", () => {
         const gameNameWithId = selectedOption ? selectedOption.textContent : "N/A";
         const gameName = gameNameWithId.split('(')[0].trim() || 'N/A';
         
-        // 1. Cập nhật khối chọn game chính
-        selectedGameId.textContent = gameId || "N/A";
+        // 1. Cập nhật khối chọn game chính (ẩn trong HTML mới hoặc có thể không tồn tại)
+        if (selectedGameId) selectedGameId.textContent = gameId || "N/A";
 
         // 2. Đồng bộ ID vào các ô input ẩn
         if (MaTroChoiInput) MaTroChoiInput.value = gameId;
@@ -120,6 +118,7 @@ document.addEventListener("DOMContentLoaded", () => {
 
     gameSelector.addEventListener('change', (e) => {
         updateSelectedGame(e.target.value);
+        loadCards();
     });
 
     // =========================================================
@@ -127,9 +126,23 @@ document.addEventListener("DOMContentLoaded", () => {
     // =========================================================
 
     async function loadCards() {
+        if (!currentSelectedGameId) {
+            displayMessage(listMessage, "Vui lòng chọn trò chơi để xem danh sách thẻ.", false);
+            renderCardList([]);
+            return;
+        }
+        
+        isSearchMode = false;
+        // Reset phân trang
+        pag = { limit: 70, offset: 0, total: 0, hasMore: false };
+        displayedCards = [];
+        updateLoadMoreButton(false);
         displayMessage(listMessage, "Đang tải danh sách thẻ...", false);
+        cardTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Đang tải...</td></tr>';
+        
         try {
-            const response = await fetch(BASE_URL);
+            const params = new URLSearchParams({ MaTroChoi: currentSelectedGameId, limit: pag.limit, offset: pag.offset });
+            const response = await fetch(`${BASE_URL}?${params.toString()}`);
             const data = await response.json();
 
             if (!response.ok) {
@@ -138,64 +151,176 @@ document.addEventListener("DOMContentLoaded", () => {
                 return;
             }
 
-            renderCardList(data.data || []);
-            displayMessage(listMessage, `Tìm thấy ${data.data.length} thẻ.`, false);
+            const page = data.page || { total: 0, limit: pag.limit, offset: pag.offset, hasMore: false };
+            pag = page;
+            displayedCards = data.data || [];
+            renderCardList(displayedCards);
+            updateLoadMoreButton(pag.hasMore);
+            displayMessage(listMessage, `Hiển thị ${displayedCards.length}/${pag.total} thẻ cho trò chơi này.`, false);
 
         } catch (error) {
             console.error("Lỗi tải thẻ:", error);
             displayMessage(listMessage, "Lỗi kết nối server khi tải thẻ.", true);
+            cardTableBody.innerHTML = '';
         }
     }
 
     function renderCardList(cards) {
         cardTableBody.innerHTML = "";
+        
         if (cards.length === 0) {
             const row = cardTableBody.insertRow();
-            row.innerHTML = `<td colspan="6" style="text-align: center;">Không tìm thấy thẻ bài nào.</td>`;
+            row.innerHTML = `<td colspan="6" style="text-align: center; padding: 20px;">
+                ${isSearchMode ? 'Không tìm thấy thẻ bài phù hợp.' : 'Không có thẻ bài nào.'}
+            </td>`;
             return;
         }
 
+        // Sử dụng DocumentFragment để tối ưu performance
+        const fragment = document.createDocumentFragment();
+        
         cards.forEach(card => {
-            const row = cardTableBody.insertRow();
-            // Đảm bảo card.Gia là số để dùng toFixed
+            const row = document.createElement('tr');
+            const displayPrice = (typeof card.Gia === 'number' ? card.Gia : 0).toFixed(2);
+            
+            row.innerHTML = `
+                <td>${card.MaThe}</td>
+                <td>${card.TenTroChoi || 'N/A'}</td>
+                <td>${card.TenThe}</td>
+                <td>$${displayPrice}</td>
+                <td>${card.HinhAnh ? `<img src="${card.HinhAnh}" alt="${card.TenThe}" loading="lazy" style="max-width:50px; height: auto; border-radius: 4px;">` : '<span style="color: #999;">N/A</span>'}</td>
+                <td>
+                    <button class="detail-btn" data-id="${card.MaThe}" title="Xem chi tiết">Xem</button>
+                    <button class="delete-btn" data-id="${card.MaThe}" title="Xóa thẻ">Xóa</button>
+                </td>
+            `;
+            fragment.appendChild(row);
+        });
+        
+        cardTableBody.appendChild(fragment);
+    }
+
+    function appendCardRows(cards) {
+        if (!cards || cards.length === 0) return;
+        const fragment = document.createDocumentFragment();
+        cards.forEach(card => {
+            const row = document.createElement('tr');
             const displayPrice = (typeof card.Gia === 'number' ? card.Gia : 0).toFixed(2);
             row.innerHTML = `
                 <td>${card.MaThe}</td>
-                <td>${card.TenTroChoi}</td>
+                <td>${card.TenTroChoi || 'N/A'}</td>
                 <td>${card.TenThe}</td>
                 <td>$${displayPrice}</td>
-                <td>${card.HinhAnh ? `<img src="${card.HinhAnh}" alt="${card.TenThe}" loading="lazy" style="max-width:50px;">` : 'N/A'}</td>
+                <td>${card.HinhAnh ? `<img src="${card.HinhAnh}" alt="${card.TenThe}" loading="lazy" style="max-width:50px; height: auto; border-radius: 4px;">` : '<span style="color: #999;">N/A</span>'}</td>
                 <td>
-                    <button class="detail-btn" data-id="${card.MaThe}">Xem</button>
-                    <button class="delete-btn" data-id="${card.MaThe}">Xóa</button>
+                    <button class="detail-btn" data-id="${card.MaThe}" title="Xem chi tiết">Xem</button>
+                    <button class="delete-btn" data-id="${card.MaThe}" title="Xóa thẻ">Xóa</button>
                 </td>
             `;
+            fragment.appendChild(row);
         });
+        cardTableBody.appendChild(fragment);
+    }
+
+    function updateLoadMoreButton(show) {
+        let container = document.getElementById('load-more-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'load-more-container';
+            container.style.textAlign = 'center';
+            container.style.margin = '10px 0 0';
+            const table = document.getElementById('card-table');
+            if (table && table.parentElement) table.parentElement.appendChild(container);
+        }
+        container.innerHTML = '';
+
+        // Show Load More only outside search mode
+        if (show && !isSearchMode) {
+            const loadMoreBtn = document.createElement('button');
+            loadMoreBtn.textContent = 'Tải thêm';
+            loadMoreBtn.style.padding = '8px 12px';
+            loadMoreBtn.style.marginTop = '8px';
+            loadMoreBtn.onclick = loadMoreCards;
+            container.appendChild(loadMoreBtn);
+        }
+
+        // Show Collapse when in search mode OR when more than first page is displayed
+        const limitVal = (pag?.limit || 70);
+        if (isSearchMode || (displayedCards && displayedCards.length > limitVal)) {
+            const collapseBtn = document.createElement('button');
+            collapseBtn.textContent = 'Thu gọn danh sách';
+            collapseBtn.style.padding = '8px 12px';
+            collapseBtn.style.marginTop = '8px';
+            if (show && !isSearchMode) collapseBtn.style.marginLeft = '8px';
+            collapseBtn.onclick = () => { loadCards(); };
+            container.appendChild(collapseBtn);
+        }
+    }
+
+    async function loadMoreCards() {
+        if (isSearchMode) return; // Không phân trang trong chế độ tìm kiếm
+        const nextOffset = (pag?.offset || 0) + (pag?.limit || 70);
+        const params = new URLSearchParams({ MaTroChoi: currentSelectedGameId, limit: pag.limit, offset: nextOffset });
+        updateLoadMoreButton(false);
+        displayMessage(listMessage, 'Đang tải thêm...', false);
+        try {
+            const response = await fetch(`${BASE_URL}?${params.toString()}`);
+            const data = await response.json();
+            if (!response.ok) {
+                displayMessage(listMessage, data.error || 'Không thể tải thêm', true);
+                updateLoadMoreButton(pag.hasMore);
+                return;
+            }
+            const page = data.page || { total: pag.total, limit: pag.limit, offset: nextOffset, hasMore: false };
+            pag = page;
+            const newItems = data.data || [];
+            if (newItems.length > 0) {
+                displayedCards = displayedCards.concat(newItems);
+                appendCardRows(newItems);
+            }
+            updateLoadMoreButton(pag.hasMore);
+            displayMessage(listMessage, `Hiển thị ${displayedCards.length}/${pag.total} thẻ cho trò chơi này.`, false);
+        } catch (err) {
+            console.error(err);
+            displayMessage(listMessage, 'Lỗi tải thêm dữ liệu.', true);
+            updateLoadMoreButton(pag.hasMore);
+        }
     }
 
     // Xóa Thẻ Bài & Xem Chi Tiết
     cardTableBody.addEventListener("click", async (e) => {
         const cardId = e.target.getAttribute("data-id");
+        if (!cardId) return;
 
         if (e.target.classList.contains("delete-btn")) {
-            const cardName = e.target.closest('tr').children[2].textContent;
+            const row = e.target.closest('tr');
+            const cardName = row.children[2].textContent;
 
             if (confirm(`Bạn có chắc chắn muốn xóa thẻ "${cardName}" (ID: ${cardId}) không?`)) {
-                // Vô hiệu hóa nút xóa để tránh click đúp
-                e.target.disabled = true; 
+                e.target.disabled = true;
+                e.target.textContent = 'Đang xóa...';
+                
                 try {
                     const response = await fetch(`${BASE_URL}/${cardId}`, { method: "DELETE" });
                     const data = await response.json();
+                    
                     if (response.ok) {
-                        alert(`Đã xóa thẻ (ID: ${cardId}).`);
-                        loadCards();
+                        // Cập nhật danh sách đang hiển thị và DOM
+                        displayedCards = displayedCards.filter(c => c.MaThe != cardId);
+                        row.remove();
+                        // Cập nhật tổng nếu có
+                        if (pag && typeof pag.total === 'number' && pag.total > 0) pag.total -= 1;
+                        displayMessage(listMessage, `Đã xóa thẻ "${cardName}".`, false);
                     } else {
                         alert(`Lỗi xóa thẻ: ${data.error || 'Lỗi không xác định'}`);
+                        e.target.disabled = false;
+                        e.target.textContent = 'Xóa';
                     }
                 } catch (error) {
+                    console.error("Lỗi xóa thẻ:", error);
                     alert("Lỗi kết nối server khi xóa thẻ.");
-                } finally {
                     e.target.disabled = false;
+                    e.target.textContent = 'Xóa';
                 }
             }
         } else if (e.target.classList.contains("detail-btn")) {
@@ -209,20 +334,26 @@ document.addEventListener("DOMContentLoaded", () => {
 
     searchCardForm.addEventListener("submit", async (e) => {
         e.preventDefault();
+        performSearch();
+    });
 
+    async function performSearch() {
         const searchSubmitButton = searchCardForm.querySelector('button[type="submit"]');
-        searchSubmitButton.disabled = true; // Vô hiệu hóa nút tìm kiếm
+        searchSubmitButton.disabled = true;
         
         const q = document.getElementById("search-q").value.trim();
         const MaTroChoi = document.getElementById("search-MaTroChoi").value;
 
         if (!MaTroChoi) {
-            displayMessage(listMessage, "Vui lòng chọn Mã Trò Chơi để tìm kiếm.", true);
+            displayMessage(listMessage, "Vui lòng chọn Trò Chơi để tìm kiếm.", true);
             searchSubmitButton.disabled = false;
             return;
         }
 
+        isSearchMode = true;
+        updateLoadMoreButton(false);
         displayMessage(listMessage, `Đang tìm kiếm thẻ...`, false);
+        cardTableBody.innerHTML = '<tr><td colspan="6" style="text-align: center;">Đang tìm kiếm...</td></tr>';
 
         const queryParams = new URLSearchParams({ q: q, MaTroChoi: MaTroChoi });
 
@@ -238,13 +369,18 @@ document.addEventListener("DOMContentLoaded", () => {
 
             renderCardList(data || []);
             displayMessage(listMessage, `Tìm kiếm thành công. Tìm thấy ${data.length} thẻ.`, false);
+            // Show collapse control to exit search mode
+            updateLoadMoreButton(false);
 
         } catch (error) {
+            console.error("Lỗi tìm kiếm:", error);
             displayMessage(listMessage, "Lỗi kết nối server khi tìm kiếm thẻ.", true);
+            cardTableBody.innerHTML = '';
         } finally {
             searchSubmitButton.disabled = false;
         }
-    });
+    }
+
 
     // =========================================================
     // V. CHỨC NĂNG MODAL THÊM THẺ
@@ -252,8 +388,13 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // Mở modal
     openAddModalBtn.onclick = () => { 
-        addModal.style.display = "block"; 
-        // Đảm bảo thông tin game đã chọn được hiển thị khi mở modal
+        if (!currentSelectedGameId) {
+            alert('Vui lòng chọn trò chơi trước khi thêm thẻ.');
+            return;
+        }
+        addModal.style.display = "block";
+        addCardForm.reset();
+        addMessage.textContent = '';
         updateSelectedGame(currentSelectedGameId); 
     };
 
@@ -264,25 +405,27 @@ document.addEventListener("DOMContentLoaded", () => {
     addCardForm.addEventListener("submit", async (e) => {
         e.preventDefault();
         
-        addSubmitButton.disabled = true; // Vô hiệu hóa nút submit
+        addSubmitButton.disabled = true;
+        const originalText = addSubmitButton.textContent;
+        addSubmitButton.textContent = 'Đang thêm...';
         displayMessage(addMessage, "Đang thêm thẻ...", false);
 
-        // Đảm bảo MaTroChoi là số nguyên
         const MaTroChoiValue = parseInt(document.getElementById("MaTroChoi").value, 10);
 
         if (isNaN(MaTroChoiValue)) {
             displayMessage(addMessage, "Vui lòng chọn Trò Chơi hợp lệ trước.", true);
             addSubmitButton.disabled = false;
+            addSubmitButton.textContent = originalText;
             return;
         }
 
         const newCard = {
-            TenThe: document.getElementById("TenThe").value,
+            TenThe: document.getElementById("TenThe").value.trim(),
             MaTroChoi: MaTroChoiValue,
             Gia: parseFloat(document.getElementById("Gia").value) || 0,
-            HinhAnh: document.getElementById("HinhAnh").value,
-            MoTa: document.getElementById("MoTa").value,
-            ThuocTinh: document.getElementById("ThuocTinh").value, // Vẫn giữ là text/JSON string
+            HinhAnh: document.getElementById("HinhAnh").value.trim(),
+            MoTa: document.getElementById("MoTa").value.trim(),
+            ThuocTinh: document.getElementById("ThuocTinh").value.trim(),
         };
 
         try {
@@ -296,15 +439,20 @@ document.addEventListener("DOMContentLoaded", () => {
             if (response.ok) {
                 displayMessage(addMessage, `Thẻ "${newCard.TenThe}" đã được thêm thành công!`, false);
                 addCardForm.reset();
-                addModal.style.display = "none";
-                loadCards();
+                
+                setTimeout(() => {
+                    addModal.style.display = "none";
+                    loadCards(); // Reload để lấy thẻ mới
+                }, 1000);
             } else {
                 displayMessage(addMessage, `Lỗi thêm thẻ: ${data.error || 'Lỗi không xác định'}`, true);
             }
         } catch (error) {
+            console.error("Lỗi thêm thẻ:", error);
             displayMessage(addMessage, "Lỗi kết nối server khi thêm thẻ.", true);
         } finally {
-            addSubmitButton.disabled = false; // Luôn mở lại nút
+            addSubmitButton.disabled = false;
+            addSubmitButton.textContent = originalText;
         }
     });
 
@@ -315,60 +463,60 @@ document.addEventListener("DOMContentLoaded", () => {
     async function showCardDetail(cardId) {
         detailModal.style.display = "block";
         displayMessage(detailMessage, "Đang tải chi tiết thẻ...", false);
-        cardDetailContent.innerHTML = '<p>Đang tải...</p>';
+        cardDetailContent.innerHTML = '<p style="text-align: center; padding: 20px;">Đang tải...</p>';
 
         try {
             const response = await fetch(`${BASE_URL}/detail/${cardId}`);
             const card = await response.json();
 
             if (!response.ok) {
-                displayMessage(detailMessage, card.error || 'Không tìm thấy chi tiết', true);
+                displayMessage(detailMessage, `${card.error || 'Không tìm thấy chi tiết'}`, true);
                 cardDetailContent.innerHTML = '';
                 return;
             }
 
-            // Đảm bảo card.Gia là số
             const price = typeof card.Gia === 'number' ? card.Gia : 0;
             let priceHtml = `<strong>Giá:</strong> $${price.toFixed(2)}`;
             if (card.CapNhatGia) {
                 priceHtml += ` <span class="new-price" style="color: blue;">(Giá mới cập nhật từ Scryfall)</span>`;
             }
 
-            // Xử lý Thuộc Tính (Giả định ThuocTinh là object)
             const props = card.ThuocTinh || {}; 
 
             let detailHtml = `
-                <div style="display: flex; gap: 20px;">
+                <div style="display: flex; gap: 20px; flex-wrap: wrap;">
                     <div style="flex-shrink: 0;">
-                        ${card.HinhAnh ? `<img src="${card.HinhAnh}" alt="${card.TenThe}" loading="lazy" style="max-width: 200px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">` : '<div style="width: 200px; height: 280px; border: 1px dashed gray; display: flex; align-items: center; justify-content: center;">Không có Hình Ảnh</div>'}
+                        ${card.HinhAnh ? 
+                            `<img src="${card.HinhAnh}" alt="${card.TenThe}" loading="lazy" style="max-width: 200px; border-radius: 8px; box-shadow: 0 4px 8px rgba(0,0,0,0.1);">` : 
+                            '<div style="width: 200px; height: 280px; border: 2px dashed #ccc; display: flex; align-items: center; justify-content: center; border-radius: 8px; color: #999;">Không có Hình Ảnh</div>'
+                        }
                     </div>
-                    <div style="flex-grow: 1;">
-                        <h3>${card.TenThe}</h3>
-                        <p class="detail-prop"><strong>Mã Thẻ:</strong> ${card.MaThe}</p>
-                        <p class="detail-prop"><strong>Trò Chơi:</strong> ${card.TenTroChoi} (ID: ${card.MaTroChoi})</p>
+                    <div style="flex-grow: 1; min-width: 300px;">
+                        <h3 style="margin-top: 0;">${card.TenThe}</h3>
+                        <p class="detail-prop"><strong>Mã Thẻ:</strong> #${card.MaThe}</p>
+                        <p class="detail-prop"><strong>Trò Chơi:</strong> ${card.TenTroChoi}</p>
                         <p class="detail-prop">${priceHtml}</p>
-                        <p class="detail-prop"><strong>Mô Tả:</strong> ${card.MoTa || 'Không có'}</p>
+                        <p class="detail-prop"><strong>Mô Tả:</strong> ${card.MoTa || '<span style="color: #999;">Không có mô tả</span>'}</p>
                     </div>
                 </div>
-                <hr style="margin: 15px 0;">
+                <hr style="margin: 15px 0; border: none; border-top: 1px solid #eee;">
                 <h4>Thông Số Kỹ Thuật:</h4>
-                <ul style="list-style-type: disc; padding-left: 20px;">
-                    <li>Màu: ${props.colors?.join(', ') || 'N/A'}</li>
-                    <li>Loại: ${props.type || 'N/A'}</li>
-                    <li>Độ Hiếm: ${props.rarity || 'N/A'}</li>
-                    <li>Set: ${props.set || 'N/A'} (${props.collectorNumber || 'N/A'})</li>
+                <ul style="list-style-type: disc; padding-left: 20px; line-height: 1.8;">
+                    <li><strong>Màu:</strong> ${props.colors?.join(', ') || '<span style="color: #999;">N/A</span>'}</li>
+                    <li><strong>Loại:</strong> ${props.type || '<span style="color: #999;">N/A</span>'}</li>
+                    <li><strong>Độ Hiếm:</strong> ${props.rarity || '<span style="color: #999;">N/A</span>'}</li>
+                    <li><strong>Set:</strong> ${props.set || '<span style="color: #999;">N/A</span>'} ${props.collectorNumber ? `(${props.collectorNumber})` : ''}</li>
                 </ul>
-                <div style="clear: both;"></div>
             `;
 
-            // Nếu có nhiều phiên bản (áp dụng cho Magic)
             if (card.Versions?.length > 0) {
                 const versionsHtml = card.Versions.map(v => `
-                    <li>${v.set} (${v.collector_number}) - $${v.usd ? parseFloat(v.usd).toFixed(2) : 'N/A'}</li>
+                    <li><strong>${v.set}</strong> (${v.collector_number}) - $${v.usd ? parseFloat(v.usd).toFixed(2) : 'N/A'}</li>
                 `).join('');
                 detailHtml += `
+                    <hr style="margin: 15px 0; border: none; border-top: 1px solid #eee;">
                     <h4>Các Phiên Bản Khác:</h4>
-                    <ul style="list-style-type: circle; padding-left: 20px;">${versionsHtml}</ul>
+                    <ul style="list-style-type: circle; padding-left: 20px; line-height: 1.8;">${versionsHtml}</ul>
                 `;
             }
 
