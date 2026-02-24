@@ -2,6 +2,43 @@ const express = require("express");
 const router = express.Router();
 const { sql, connectDB } = require("../db");
 const axios = require("axios");
+const multer = require("multer");
+const path = require("path");
+const fs = require("fs");
+
+// Cấu hình multer để upload ảnh
+const storage = multer.diskStorage({
+    destination: function (req, file, cb) {
+        const uploadDir = path.join(__dirname, "..", "uploads", "cards");
+        // Đảm bảo thư mục tồn tại
+        if (!fs.existsSync(uploadDir)) {
+            fs.mkdirSync(uploadDir, { recursive: true });
+        }
+        cb(null, uploadDir);
+    },
+    filename: function (req, file, cb) {
+        // Tạo tên file unique: timestamp + random + extension
+        const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
+        cb(null, uniqueSuffix + path.extname(file.originalname));
+    }
+});
+
+const upload = multer({
+    storage: storage,
+    limits: { fileSize: 5 * 1024 * 1024 }, // Giới hạn 5MB
+    fileFilter: function (req, file, cb) {
+        // Chỉ chấp nhận file ảnh
+        const allowedTypes = /jpeg|jpg|png|gif|webp/;
+        const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+        const mimetype = allowedTypes.test(file.mimetype);
+        
+        if (mimetype && extname) {
+            return cb(null, true);
+        } else {
+            cb(new Error("Chỉ chấp nhận file ảnh (JPEG, PNG, GIF, WebP)"));
+        }
+    }
+});
 
 // ================== SEARCH THẺ (Tối ưu Batch Insert) ==================
 router.get("/search", async (req, res) => {
@@ -279,12 +316,23 @@ router.get("/detail/:MaThe", async (req, res) => {
     }
 });
 
-// ================== THÊM THẺ (Thêm OUTPUT để trả về ID) ==================
-router.post("/", async (req, res) => {
-    let { TenThe, MaTroChoi, HinhAnh, MoTa, ThuocTinh, Gia } = req.body;
+// ================== THÊM THẺ VỚI UPLOAD ẢNH ==================
+router.post("/", upload.single('imageFile'), async (req, res) => {
+    let { TenThe, MaTroChoi, HinhAnh, MoTa, ThuocTinh, Gia, imageSource } = req.body;
 
     if (!TenThe || !MaTroChoi)
         return res.status(400).json({ error: "Thiếu thông tin" });
+
+    // Xử lý ảnh: nếu upload file thì dùng file, không thì dùng URL
+    if (imageSource === 'file' && req.file) {
+        // Tạo đường dẫn tương đối cho database
+        HinhAnh = `/uploads/cards/${req.file.filename}`;
+    } else if (imageSource === 'url') {
+        // Sử dụng URL từ input
+        HinhAnh = HinhAnh || "";
+    } else {
+        HinhAnh = "";
+    }
 
     // Validate JSON
     let ThuocTinhJson = {};

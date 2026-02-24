@@ -100,6 +100,9 @@ document.addEventListener("DOMContentLoaded", () => {
         const gameNameWithId = selectedOption ? selectedOption.textContent : "N/A";
         const gameName = gameNameWithId.split('(')[0].trim() || 'N/A';
         
+        // Cập nhật form thuộc tính dựa trên loại game
+        updateAttributesForm(gameId);
+        
         // 1. Cập nhật khối chọn game chính (ẩn trong HTML mới hoặc có thể không tồn tại)
         if (selectedGameId) selectedGameId.textContent = gameId || "N/A";
 
@@ -115,6 +118,38 @@ document.addEventListener("DOMContentLoaded", () => {
         if (searchSelectedGameName) searchSelectedGameName.textContent = gameName;
         if (searchSelectedGameId) searchSelectedGameId.textContent = gameId;
     } 
+
+    // Hàm cập nhật form thuộc tính dựa trên MaLoai của game
+    async function updateAttributesForm(gameId) {
+        const magicAttrs = document.getElementById('magic-attributes');
+        const genericAttrs = document.getElementById('generic-attributes');
+        
+        if (!gameId) {
+            magicAttrs.style.display = 'none';
+            genericAttrs.style.display = 'none';
+            return;
+        }
+        
+        try {
+            const response = await fetch(GAME_API_URL);
+            const games = await response.json();
+            const selectedGame = games.find(g => g.MaTroChoi == gameId);
+            
+            if (selectedGame) {
+                if (selectedGame.MaLoai === 1) {
+                    // Magic: The Gathering
+                    magicAttrs.style.display = 'block';
+                    genericAttrs.style.display = 'none';
+                } else {
+                    // Các loại thẻ khác
+                    magicAttrs.style.display = 'none';
+                    genericAttrs.style.display = 'block';
+                }
+            }
+        } catch (error) {
+            console.error('Lỗi cập nhật form thuộc tính:', error);
+        }
+    }
 
     gameSelector.addEventListener('change', (e) => {
         updateSelectedGame(e.target.value);
@@ -386,6 +421,28 @@ document.addEventListener("DOMContentLoaded", () => {
     // V. CHỨC NĂNG MODAL THÊM THẺ
     // =========================================================
 
+    // Toggle giữa URL input và File input
+    const imageSourceUrl = document.getElementById('imageSourceUrl');
+    const imageSourceFile = document.getElementById('imageSourceFile');
+    const urlInputGroup = document.getElementById('urlInputGroup');
+    const fileInputGroup = document.getElementById('fileInputGroup');
+
+    imageSourceUrl.addEventListener('change', () => {
+        if (imageSourceUrl.checked) {
+            urlInputGroup.style.display = 'block';
+            fileInputGroup.style.display = 'none';
+            document.getElementById('ImageFile').value = ''; // Clear file input
+        }
+    });
+
+    imageSourceFile.addEventListener('change', () => {
+        if (imageSourceFile.checked) {
+            urlInputGroup.style.display = 'none';
+            fileInputGroup.style.display = 'block';
+            document.getElementById('HinhAnh').value = ''; // Clear URL input
+        }
+    });
+
     // Mở modal
     openAddModalBtn.onclick = () => { 
         if (!currentSelectedGameId) {
@@ -395,8 +452,59 @@ document.addEventListener("DOMContentLoaded", () => {
         addModal.style.display = "block";
         addCardForm.reset();
         addMessage.textContent = '';
+        // Reset về URL mode
+        imageSourceUrl.checked = true;
+        urlInputGroup.style.display = 'block';
+        fileInputGroup.style.display = 'none';
         updateSelectedGame(currentSelectedGameId); 
     };
+
+    // Hàm thu thập thuộc tính từ form
+    function collectAttributesFromForm() {
+        const magicAttrs = document.getElementById('magic-attributes');
+        const genericAttrs = document.getElementById('generic-attributes');
+        
+        if (magicAttrs.style.display !== 'none') {
+            // Magic attributes
+            const colors = Array.from(document.querySelectorAll('input[name="colors"]:checked')).map(cb => cb.value);
+            return {
+                colors: colors,
+                type_line: document.getElementById('attr_type').value.trim(),
+                rarity: document.getElementById('attr_rarity').value,
+                set_name: document.getElementById('attr_set').value.trim(),
+                collector_number: document.getElementById('attr_collector_number').value.trim(),
+                mana_cost: document.getElementById('attr_mana_cost').value.trim()
+            };
+        } else if (genericAttrs.style.display !== 'none') {
+            // Generic attributes
+            return {
+                type: document.getElementById('attr_gen_type').value.trim(),
+                rarity: document.getElementById('attr_gen_rarity').value.trim(),
+                attribute: document.getElementById('attr_gen_attribute').value.trim(),
+                level: document.getElementById('attr_gen_level').value,
+                set: document.getElementById('attr_gen_set').value.trim()
+            };
+        }
+        return {};
+    }
+
+    // Hàm reset form thuộc tính
+    function resetAttributesForm() {
+        // Reset Magic attributes
+        document.querySelectorAll('input[name="colors"]').forEach(cb => cb.checked = false);
+        document.getElementById('attr_type').value = '';
+        document.getElementById('attr_rarity').value = '';
+        document.getElementById('attr_set').value = '';
+        document.getElementById('attr_collector_number').value = '';
+        document.getElementById('attr_mana_cost').value = '';
+        
+        // Reset Generic attributes
+        document.getElementById('attr_gen_type').value = '';
+        document.getElementById('attr_gen_rarity').value = '';
+        document.getElementById('attr_gen_attribute').value = '';
+        document.getElementById('attr_gen_level').value = '';
+        document.getElementById('attr_gen_set').value = '';
+    }
 
     // Đóng modal bằng nút X
     closeAddBtn.onclick = () => { addModal.style.display = "none"; };
@@ -419,34 +527,64 @@ document.addEventListener("DOMContentLoaded", () => {
             return;
         }
 
-        const newCard = {
-            TenThe: document.getElementById("TenThe").value.trim(),
-            MaTroChoi: MaTroChoiValue,
-            Gia: parseFloat(document.getElementById("Gia").value) || 0,
-            HinhAnh: document.getElementById("HinhAnh").value.trim(),
-            MoTa: document.getElementById("MoTa").value.trim(),
-            ThuocTinh: document.getElementById("ThuocTinh").value.trim(),
-        };
+        // Kiểm tra image source (URL hoặc File)
+        const imageSource = document.querySelector('input[name="imageSource"]:checked').value;
+        
+        // Tạo FormData thay vì JSON
+        const formData = new FormData();
+        formData.append('TenThe', document.getElementById("TenThe").value.trim());
+        formData.append('MaTroChoi', MaTroChoiValue);
+        formData.append('Gia', parseFloat(document.getElementById("Gia").value) || 0);
+        formData.append('MoTa', document.getElementById("MoTa").value.trim());
+        
+        // Thu thập thuộc tính từ form động
+        const attributes = collectAttributesFromForm();
+        formData.append('ThuocTinh', JSON.stringify(attributes));
+        formData.append('imageSource', imageSource);
+
+        if (imageSource === 'url') {
+            formData.append('HinhAnh', document.getElementById("HinhAnh").value.trim());
+        } else if (imageSource === 'file') {
+            const fileInput = document.getElementById("ImageFile");
+            if (fileInput.files.length > 0) {
+                formData.append('imageFile', fileInput.files[0]);
+            } else {
+                displayMessage(addMessage, "Vui lòng chọn file ảnh.", true);
+                addSubmitButton.disabled = false;
+                addSubmitButton.textContent = originalText;
+                return;
+            }
+        }
 
         try {
             const response = await fetch(BASE_URL, {
                 method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(newCard),
+                body: formData, // Gửi FormData thay vì JSON
+                // Không cần set Content-Type, browser sẽ tự động set với boundary
             });
             const data = await response.json();
 
             if (response.ok) {
-                displayMessage(addMessage, `Thẻ "${newCard.TenThe}" đã được thêm thành công!`, false);
+                const cardName = formData.get('TenThe');
+                displayMessage(addMessage, `Thẻ "${cardName}" đã được thêm thành công!`, false);
                 addCardForm.reset();
+                
+                // Reset form thuộc tính
+                resetAttributesForm();
+                
+                // Reset image input về URL mode
+                imageSourceUrl.checked = true;
+                urlInputGroup.style.display = 'block';
+                fileInputGroup.style.display = 'none';
                 
                 setTimeout(() => {
                     addModal.style.display = "none";
-                    loadCards(); // Reload để lấy thẻ mới
+                    // Đảm bảo load lại danh sách thẻ của trò chơi hiện tại
+                    loadCards();
                 }, 1000);
             } else {
                 displayMessage(addMessage, `Lỗi thêm thẻ: ${data.error || 'Lỗi không xác định'}`, true);
-            }
+            }2
         } catch (error) {
             console.error("Lỗi thêm thẻ:", error);
             displayMessage(addMessage, "Lỗi kết nối server khi thêm thẻ.", true);
@@ -533,13 +671,15 @@ document.addEventListener("DOMContentLoaded", () => {
     // Đóng modal chi tiết bằng nút X
     closeDetailBtn.onclick = () => { detailModal.style.display = "none"; };
 
-    // Đóng modal khi click ra ngoài (đã hợp nhất)
+    // Đóng modal khi click ra ngoài (chỉ áp dụng cho modal chi tiết)
     window.onclick = (event) => {
         if (event.target == detailModal) {
             detailModal.style.display = "none";
-        } else if (event.target == addModal) {
-            addModal.style.display = "none";
         }
+        // Đã tắt: click outside không đóng modal thêm thẻ
+        // else if (event.target == addModal) {
+        //     addModal.style.display = "none";
+        // }
     };
 
 

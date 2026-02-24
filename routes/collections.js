@@ -176,4 +176,99 @@ router.delete("/cards/:MaTheSuuTap", async (req, res) => {
     res.json({ message: "Đã xóa thẻ khỏi bộ sưu tập" })
 })
 
+// ================== CHUYỂN DANH SÁCH THẺ TỪ BỘ SƯU TẬP SANG RAO BÁN ==================
+router.post("/:MaBoSuuTap/convert-to-raoban", async (req, res) => {
+    try {
+        const { MaBoSuuTap } = req.params;
+        const { MaNguoiDung, GiaBan, TinhTrang = "Mới", MoTa = "" } = req.body;
+
+        // Kiểm tra dữ liệu bắt buộc
+        if (!MaNguoiDung || !GiaBan) {
+            return res.status(400).json({ 
+                success: false, 
+                error: "Thiếu dữ liệu: MaNguoiDung, GiaBan" 
+            });
+        }
+
+        const pool = await connectDB();
+        const transaction = new sql.Transaction(pool);
+
+        try {
+            await transaction.begin();
+            const request = new sql.Request(transaction);
+
+            // 1. Kiểm tra quyền sở hữu bộ sưu tập
+            const checkCollection = await request
+                .input("MaBoSuuTap", sql.Int, MaBoSuuTap)
+                .input("MaNguoiDung", sql.Int, MaNguoiDung)
+                .query(`
+                    SELECT MaBoSuuTap FROM BoSuuTap 
+                    WHERE MaBoSuuTap = @MaBoSuuTap 
+                    AND MaNguoiDung = @MaNguoiDung
+                `);
+
+            if (checkCollection.recordset.length === 0) {
+                await transaction.rollback();
+                return res.status(403).json({ 
+                    success: false, 
+                    error: "Bạn không có quyền truy cập bộ sưu tập này!" 
+                });
+            }
+
+            // 2. Lấy tất cả thẻ trong bộ sưu tập
+            const cards = await request.query(`
+                SELECT DISTINCT MaThe FROM TheTrongBoSuuTap 
+                WHERE MaBoSuuTap = @MaBoSuuTap
+            `);
+
+            if (cards.recordset.length === 0) {
+                await transaction.rollback();
+                return res.status(400).json({ 
+                    success: false, 
+                    error: "Bộ sưu tập này không có thẻ nào!" 
+                });
+            }
+
+            // 3. Thêm từng thẻ vào danh sách rao bán (Sequential insert)
+            let addedCount = 0;
+            for (const card of cards.recordset) {
+                const insertRequest = new sql.Request(transaction);
+                const result = await insertRequest
+                    .input("MaNguoiDung", sql.Int, MaNguoiDung)
+                    .input("MaThe", sql.Int, card.MaThe)
+                    .input("Gia", sql.Decimal(10, 2), GiaBan)
+                    .input("TinhTrang", sql.NVarChar, TinhTrang)
+                    .input("MoTa", sql.NVarChar, MoTa)
+                    .query(`
+                        INSERT INTO TheRaoBan (MaNguoiDung, MaThe, Gia, TinhTrang, MoTa)
+                        VALUES (@MaNguoiDung, @MaThe, @Gia, @TinhTrang, @MoTa)
+                    `);
+                
+                if (result.rowsAffected[0] > 0) {
+                    addedCount++;
+                }
+            }
+
+            await transaction.commit();
+
+            res.json({ 
+                success: true, 
+                message: `Đã chuyển ${addedCount} thẻ từ bộ sưu tập sang danh sách rao bán!`,
+                addedCount 
+            });
+
+        } catch (err) {
+            await transaction.rollback();
+            throw err;
+        }
+
+    } catch (err) {
+        console.error("Lỗi chuyển sang rao bán:", err);
+        res.status(500).json({ 
+            success: false, 
+            error: "Lỗi server: " + err.message 
+        });
+    }
+});
+
 module.exports = router

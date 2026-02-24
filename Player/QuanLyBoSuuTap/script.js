@@ -20,6 +20,7 @@ const el = {
     btnNewCollection: () => document.getElementById("btnNewCollection"),
     btnRename: () => document.getElementById("btnRename"),
     btnDelete: () => document.getElementById("btnDelete"),
+    btnConvertToRaoBan: () => document.getElementById("btnConvertToRaoBan"),
     modal: () => document.getElementById("modal"),
     modalTitle: () => document.getElementById("modalTitle"),
     modalBody: () => document.getElementById("modalBody"),
@@ -47,6 +48,7 @@ function bindEvents() {
     el.btnNewCollection().addEventListener("click", onCreateCollection);
     el.btnRename().addEventListener("click", onRenameCollection);
     el.btnDelete().addEventListener("click", onDeleteCollection);
+    el.btnConvertToRaoBan().addEventListener("click", onConvertToRaoBan);
     el.modalCancel().addEventListener("click", hideModal);
     el.modalOk().addEventListener("click", onModalOk);
     el.searchInCollection().addEventListener("input", filterCollectionCards);
@@ -249,6 +251,75 @@ async function onDeleteCollection() {
         currentCollectionId = null;
         await loadCollections();
     } catch (err) { console.error(err); alert("Không xóa được"); }
+}
+
+// ================== CHUYỂN SAG RAO BÁN ==================
+async function onConvertToRaoBan() {
+    if (!currentCollectionId) return alert("Chưa chọn bộ sưu tập");
+    if (!currentCollection || currentCollection.items.length === 0) {
+        return alert("Bộ sưu tập không có thẻ nào");
+    }
+
+    // Modal để nhập giá bán
+    const html = `
+        <div style="display:flex; flex-direction:column; gap:12px;">
+            <label>
+                <strong>Giá bán (VNĐ):</strong>
+                <input type="number" id="priceInput" placeholder="50000" value="50000" min="1000" style="width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:inherit;" />
+            </label>
+            <label>
+                <strong>Tình trạng:</strong>
+                <select id="conditionSelect" style="width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:inherit;">
+                    <option value="Mới">Mới</option>
+                    <option value="Như mới">Như mới</option>
+                    <option value="Tốt">Tốt</option>
+                    <option value="Bình thường">Bình thường</option>
+                </select>
+            </label>
+            <label>
+                <strong>Mô tả (tùy chọn):</strong>
+                <textarea id="descInput" placeholder="Nhập mô tả thẻ..." style="width:100%; padding:8px; margin-top:4px; border-radius:6px; border:1px solid rgba(255,255,255,0.1); background:rgba(255,255,255,0.05); color:inherit; min-height:60px;"></textarea>
+            </label>
+            <div style="font-size:12px; color:rgba(255,255,255,0.6);">
+                Sẽ chuyển <strong>${currentCollection.items.length}</strong> thẻ sang danh sách rao bán
+            </div>
+        </div>
+    `;
+
+    const result = await showModal("Chuyển sang rao bán", html, "Chuyển");
+    if (!result) return;
+
+    const giaBan = Number(document.getElementById("priceInput").value);
+    const tinhTrang = document.getElementById("conditionSelect").value;
+    const moTa = document.getElementById("descInput").value;
+
+    if (!giaBan || giaBan < 1000) {
+        return alert("Giá bán phải lớn hơn 1000 VNĐ");
+    }
+
+    try {
+        const res = await fetch(`${API}/collections/${currentCollectionId}/convert-to-raoban`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+                MaNguoiDung: currentUser,
+                GiaBan: giaBan,
+                TinhTrang: tinhTrang,
+                MoTa: moTa
+            })
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+            return alert("Lỗi: " + (data.error || "Không thể chuyển"));
+        }
+
+        alert(data.message || "Chuyển thành công!");
+        await loadCollectionItems(currentCollectionId);
+    } catch (err) {
+        console.error("Lỗi chuyển sang rao bán:", err);
+        alert("Lỗi: " + err.message);
+    }
 }
 
 // ----------------- Search cards -----------------

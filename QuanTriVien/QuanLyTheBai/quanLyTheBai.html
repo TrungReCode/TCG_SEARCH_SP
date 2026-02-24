@@ -85,18 +85,113 @@
                     <label for="Gia">Giá (USD):</label>
                     <input type="number" id="Gia" step="0.01" value="0.00" min="0" required>
                 </div>
-                <div>
-                    <label for="HinhAnh">URL Hình Ảnh:</label>
-                    <input type="url" id="HinhAnh">
+                
+                <div class="image-input-group">
+                    <label>Hình Ảnh:</label>
+                    <div style="margin-bottom: 10px;">
+                        <input type="radio" id="imageSourceUrl" name="imageSource" value="url" checked>
+                        <label for="imageSourceUrl" style="display: inline; font-weight: normal;">Nhập URL</label>
+                        
+                        <input type="radio" id="imageSourceFile" name="imageSource" value="file" style="margin-left: 20px;">
+                        <label for="imageSourceFile" style="display: inline; font-weight: normal;">Upload từ máy</label>
+                    </div>
+                    
+                    <div id="urlInputGroup">
+                        <input type="url" id="HinhAnh" placeholder="https://example.com/image.jpg">
+                    </div>
+                    
+                    <div id="fileInputGroup" style="display: none;">
+                        <input type="file" id="ImageFile" accept="image/*">
+                        <small style="color: #666; display: block; margin-top: 5px;">
+                            Chấp nhận: JPG, PNG, GIF, WebP (Tối đa 5MB)
+                        </small>
+                    </div>
                 </div>
+                
                 <div>
                     <label for="MoTa">Mô Tả:</label>
                     <textarea id="MoTa" rows="3"></textarea>
                 </div>
-                <div>
-                    <label for="ThuocTinh">Thuộc Tính (JSON):</label>
-                    <textarea id="ThuocTinh" rows="3" placeholder='{"colors": ["W"], "rarity": "common"}'></textarea>
+                
+                <!-- Thuộc tính động dựa trên loại thẻ -->
+                <div id="attributes-section">
+                    <h3 style="margin-top: 20px; margin-bottom: 10px; border-bottom: 2px solid #ddd; padding-bottom: 5px;">Thuộc Tính</h3>
+                    
+                    <!-- Magic: The Gathering (MaLoai = 1) -->
+                    <div id="magic-attributes" class="attributes-group" style="display: none;">
+                        <div>
+                            <label for="attr_colors">Màu Sắc:</label>
+                            <div style="display: flex; gap: 10px; flex-wrap: wrap; margin-top: 5px;">
+                                <label style="display: flex; align-items: center; font-weight: normal;">
+                                    <input type="checkbox" name="colors" value="W" style="margin-right: 5px;"> White (W)
+                                </label>
+                                <label style="display: flex; align-items: center; font-weight: normal;">
+                                    <input type="checkbox" name="colors" value="U" style="margin-right: 5px;"> Blue (U)
+                                </label>
+                                <label style="display: flex; align-items: center; font-weight: normal;">
+                                    <input type="checkbox" name="colors" value="B" style="margin-right: 5px;"> Black (B)
+                                </label>
+                                <label style="display: flex; align-items: center; font-weight: normal;">
+                                    <input type="checkbox" name="colors" value="R" style="margin-right: 5px;"> Red (R)
+                                </label>
+                                <label style="display: flex; align-items: center; font-weight: normal;">
+                                    <input type="checkbox" name="colors" value="G" style="margin-right: 5px;"> Green (G)
+                                </label>
+                            </div>
+                        </div>
+                        <div>
+                            <label for="attr_type">Loại Thẻ:</label>
+                            <input type="text" id="attr_type" placeholder="Creature — Human Wizard">
+                        </div>
+                        <div>
+                            <label for="attr_rarity">Độ Hiếm:</label>
+                            <select id="attr_rarity">
+                                <option value="">-- Chọn độ hiếm --</option>
+                                <option value="common">Common</option>
+                                <option value="uncommon">Uncommon</option>
+                                <option value="rare">Rare</option>
+                                <option value="mythic">Mythic Rare</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label for="attr_set">Set Name:</label>
+                            <input type="text" id="attr_set" placeholder="Streets of New Capenna">
+                        </div>
+                        <div>
+                            <label for="attr_collector_number">Collector Number:</label>
+                            <input type="text" id="attr_collector_number" placeholder="123">
+                        </div>
+                        <div>
+                            <label for="attr_mana_cost">Mana Cost:</label>
+                            <input type="text" id="attr_mana_cost" placeholder="{2}{U}{U}">
+                        </div>
+                    </div>
+                    
+                    <!-- Các loại thẻ khác (MaLoai != 1) -->
+                    <div id="generic-attributes" class="attributes-group" style="display: none;">
+                        <div>
+                            <label for="attr_gen_type">Loại:</label>
+                            <input type="text" id="attr_gen_type" placeholder="Monster, Trap, Spell, etc.">
+                        </div>
+                        <div>
+                            <label for="attr_gen_rarity">Độ Hiếm:</label>
+                            <input type="text" id="attr_gen_rarity" placeholder="Common, Rare, Ultra Rare, etc.">
+                        </div>
+                        <div>
+                            <label for="attr_gen_attribute">Thuộc Tính:</label>
+                            <input type="text" id="attr_gen_attribute" placeholder="Fire, Water, Dark, Light, etc.">
+                        </div>
+                        <div>
+                            <label for="attr_gen_level">Level/Rank:</label>
+                            <input type="number" id="attr_gen_level" min="0" placeholder="5">
+                        </div>
+                        <div>
+                            <label for="attr_gen_set">Set/Series:</label>
+                            <input type="text" id="attr_gen_set" placeholder="Set name">
+                        </div>
+                    </div>
                 </div>
+                
                 <button type="submit">Thêm Thẻ</button>
                 <p id="add-message" class="message"></p>
             </form>

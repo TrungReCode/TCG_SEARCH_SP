@@ -14,6 +14,7 @@ app.use(bodyParser.urlencoded({ extended: true }));
 // Static files
 app.use(express.static('DangNhap_DangKy'));
 app.use(express.static(__dirname));
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Router cards
 const cardsRouter = require("./routes/cards")
