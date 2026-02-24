@@ -1,0 +1,309 @@
+// Configuration Guide - Hướng Dẫn Cấu Hình Thống Kê
+
+// ==================== CACHE CONFIGURATION ====================
+// Vị trí: statistics.js (dòng 1-5)
+const CACHE_DURATION = 5 * 60 * 1000;  // 5 phút
+// Thay đổi để điều chỉnh:
+// 1 * 60 * 1000 = 1 phút
+// 10 * 60 * 1000 = 10 phút
+// 30 * 60 * 1000 = 30 phút
+
+// ==================== API ENDPOINTS ====================
+// Vị trí: statistics.js (dòng 6)
+const API_BASE_URL = 'http://localhost:3000';
+// Thay đổi khi deploy:
+// const API_BASE_URL = 'https://yourdomain.com';
+
+// ==================== AUTO-REFRESH SETTINGS ====================
+// Vị trí: statistics.js (dòng 370-372)
+// Current: 10 phút
+setInterval(refreshAllData, 10 * 60 * 1000);
+// Để thay đổi thành 5 phút:
+setInterval(refreshAllData, 5 * 60 * 1000);
+
+// ==================== CHART COLORS ====================
+// Vị trí: routes/statistics.js
+
+// Revenue Chart
+borderColor: '#2ecc71'  // Xanh lá
+backgroundColor: 'rgba(46, 204, 113, 0.1)'
+
+// Orders Chart
+backgroundColor: [
+  '#f39c12',  // Vàng (Chờ xử lý)
+  '#2ecc71',  // Xanh lá (Đã thanh toán)
+  '#3498db',  // Xanh lam (Đang giao)
+  '#9b59b6',  // Tím (Đã giao)
+  '#e74c3c',  // Đỏ (Từ chối)
+  '#95a5a6'   // Xám (Hủy)
+]
+
+// ==================== DATABASE QUERIES ====================
+// Vị trí: routes/statistics.js
+
+// 1. Thay đổi khoảng thời gian (hiện tại 30 ngày)
+// Tìm dòng:
+WHERE NgayTao >= DATEADD(day, -30, CAST(GETDATE() AS DATE))
+// Thay thành:
+WHERE NgayTao >= DATEADD(day, -7, CAST(GETDATE() AS DATE))   // 7 ngày
+WHERE NgayTao >= DATEADD(month, -3, CAST(GETDATE() AS DATE)) // 3 tháng
+WHERE NgayTao >= DATEADD(year, -1, CAST(GETDATE() AS DATE))  // 1 năm
+
+// 2. Thay đổi TOP số lượng (hiện tại TOP 10)
+SELECT TOP 10 ...
+→ SELECT TOP 20 ...  (hoặc giá trị khác)
+
+// 3. Thay đổi trạng thái được count
+WHERE TrangThai IN ('DaThanhToan', 'DangGiao', 'DaGiao')
+→ WHERE TrangThai IN ('DaThanhToan')  (chỉ đã thanh toán)
+
+// ==================== UI CUSTOMIZATION ====================
+// Vị trí: statistics.html
+
+// 1. Thay đổi tiêu đề
+<h1><i class="fas fa-chart-line"></i> Thống kê và báo cáo</h1>
+→ <h1><i class="fas fa-analytics"></i> Phân tích dữ liệu</h1>
+
+// 2. Thay đổi màu header (gradient)
+// Vị trí: statistics.html CSS (dòng ~82)
+header {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+}
+// Thay thành:
+header {
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
+}
+
+// 3. Thay đổi kích cỡ grid
+grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+// minmax(220px, 1fr) = card tối thiểu 220px
+// Thay thành:
+grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));  // Rộng hơn
+grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));  // Hẹp hơn
+
+// ==================== PERFORMANCE TUNING ====================
+
+// 1. Giảm tần suất refresh (tiết kiệm bandwidth)
+// Vị trí: statistics.js
+// Current: 10 phút
+setInterval(refreshAllData, 10 * 60 * 1000);
+// Thay thành:
+setInterval(refreshAllData, 15 * 60 * 1000);  // 15 phút
+setInterval(refreshAllData, 30 * 60 * 1000);  // 30 phút
+
+// 2. Tăng cache duration (tăng cache hit rate)
+// Current: 5 phút
+const CACHE_DURATION = 5 * 60 * 1000;
+// Thay thành:
+const CACHE_DURATION = 10 * 60 * 1000;  // 10 phút
+
+// 3. Thay đổi chart resize debounce
+// Vị trí: statistics.js (dòng 385)
+setTimeout(() => chart.resize(), 100);
+// Thay thành:
+setTimeout(() => chart.resize(), 200);  // Giảm tần suất
+
+// ==================== ERROR HANDLING ====================
+
+// 1. Thay đổi thời gian hiển thị error message
+// Vị trí: statistics.js (dòng 38-41)
+setTimeout(() => {
+  errorEl.style.display = 'none';
+}, 5000);  // 5 giây
+// Thay thành:
+}, 10000);  // 10 giây
+
+// 2. Tùy chỉnh error messages
+// Vị trí: statistics.js
+showError('Lỗi tải dữ liệu thống kê tổng quan');
+showError('Lỗi server');
+showError('Lỗi tải dữ liệu: ...');
+
+// ==================== BACKEND CACHE ====================
+// Vị trí: routes/statistics.js (dòng 8-45)
+
+// Thay đổi cache duration (backend)
+const CACHE_DURATION = 5 * 60 * 1000;  // 5 phút
+// Thay thành:
+const CACHE_DURATION = 10 * 60 * 1000;  // 10 phút (khớp với frontend nếu muốn)
+
+// Disable backend cache (nếu muốn real-time data):
+// Comment out các dòng:
+const cacheKey = 'overview';
+const cachedData = getCacheData(cacheKey);
+if (cachedData) return res.json(cachedData);
+// ...
+setCacheData(cacheKey, result);
+
+// ==================== CHART.JS CONFIGURATION ====================
+// Vị trí: statistics.js (các hàm loadChart)
+
+// Thay đổi chart animation
+// Chart.js mặc định có animation
+// Để disable:
+options: {
+  animation: {
+    duration: 0  // Disable animation
+  }
+}
+
+// Thay đổi tooltip delay
+options: {
+  plugins: {
+    tooltip: {
+      delay: 0  // Hiển thị ngay
+    }
+  }
+}
+
+// ==================== DATABASE CONNECTION ====================
+// Vị trí: routes/statistics.js
+
+// Tăng query timeout (nếu queries chậm)
+const request = new sql.Request(transaction);
+request.timeout = 30000;  // 30 giây (default 15 giây)
+
+// ==================== RESPONSIVE BREAKPOINTS ====================
+// Vị trí: statistics.html CSS
+
+// Hiện tại:
+@media (max-width: 1024px) { ... }
+@media (max-width: 768px) { ... }
+
+// Để customize:
+@media (max-width: 1200px) { ... }  // Tăng breakpoint desktop
+@media (max-width: 992px) { ... }
+@media (max-width: 768px) { ... }
+@media (max-width: 576px) { ... }   // Thêm breakpoint mobile nhỏ
+
+// ==================== SECURITY SETTINGS ====================
+
+// 1. Validate input (trong routes)
+if (!MaNguoiDung || isNaN(MaNguoiDung)) {
+  return res.status(400).json({ error: "Invalid input" });
+}
+
+// 2. Limit API response size
+const MAX_RECORDS = 1000;
+const result = await pool.request().query(`
+  SELECT TOP ${MAX_RECORDS} ...
+`);
+
+// 3. Rate limiting (add express-rate-limit)
+const rateLimit = require('express-rate-limit');
+const limiter = rateLimit({
+  windowMs: 15 * 60 * 1000,  // 15 phút
+  max: 100  // 100 requests per windowMs
+});
+app.use('/statistics', limiter);
+
+// ==================== LOGGING & MONITORING ====================
+
+// Thêm logging (trong routes/statistics.js)
+console.log(`Cache hit for ${cacheKey}`);
+console.log(`Cache miss for ${cacheKey}, fetching from DB`);
+console.log(`Query execution time: ${Date.now() - startTime}ms`);
+
+// Monitors performance
+try {
+  const startTime = Date.now();
+  const result = await pool.request().query(...);
+  const duration = Date.now() - startTime;
+  console.log(`Query took ${duration}ms, returned ${result.recordset.length} rows`);
+} catch (err) {
+  console.error(`Query failed: ${err.message}`);
+}
+
+// ==================== LOCALIZATION ====================
+// Vị trí: statistics.html, statistics.js
+
+// Thay đổi ngôn ngữ:
+'Người dùng' → 'Users'
+'Đơn hàng' → 'Orders'
+'Doanh thu' → 'Revenue'
+// Cập nhật tất cả các labels trong HTML và JS
+
+// Currency format
+// Hiện tại: Vietnamese Đồng
+formatCurrency(value)  // VND
+
+// Để thay đổi thành USD:
+new Intl.NumberFormat('en-US', {
+  style: 'currency',
+  currency: 'USD'
+}).format(value)
+
+// ==================== NOTIFICATIONS ====================
+
+// Thêm notification khi data update
+function onDataRefreshed() {
+  console.log('Data refreshed at ' + new Date().toLocaleTimeString('vi-VN'));
+  // Hoặc thêm toast notification
+}
+
+// ==================== EXPORT DATA ====================
+
+// Thêm export to CSV (tương lai)
+function exportToCSV() {
+  const csv = data.map(row => Object.values(row).join(','));
+  const blob = new Blob([csv], { type: 'text/csv' });
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url;
+  a.download = `statistics-${Date.now()}.csv`;
+  a.click();
+}
+
+// ==================== TESTING CONFIGURATION ====================
+
+// Test mode (disable cache auto-clear)
+// Uncomment để enable test mode
+// const TEST_MODE = true;
+// if (TEST_MODE) {
+//   CACHE_DURATION = 1 * 60 * 60 * 1000;  // 1 giờ
+//   const AUTO_REFRESH_INTERVAL = null;  // Disable auto-refresh
+// }
+
+// ==================== QUICK REFERENCE ====================
+
+// Thần kỳ một số điều chỉnh nhanh:
+
+// 1. Tăng tốc độ load
+   - Tăng CACHE_DURATION
+   - Giảm auto-refresh interval
+   - Tối ưu SQL queries
+
+// 2. Cập nhật dữ liệu thực tế
+   - Giảm CACHE_DURATION
+   - Tăng auto-refresh interval
+   - Enable real-time updates
+
+// 3. Tối ưu cho mobile
+   - Reduce chart animation duration
+   - Increase grid minmax size
+   - Lazy load images
+
+// 4. Tối ưu cho desktop
+   - Enable all animations
+   - Increase chart detail
+   - Add more datasets
+
+// ==================== TROUBLESHOOTING CONFIGS ====================
+
+// Nếu charts không render:
+// - Check Chart.js CDN
+// - Clear browser cache
+// - Check console errors
+
+// Nếu data không update:
+// - Check cache duration
+// - Check API endpoints
+// - Check database connection
+
+// Nếu performance chậm:
+// - Increase cache duration
+// - Reduce SQL query complexity
+// - Enable compression
+
+---
+Để áp dụng các thay đổi, edit các file tương ứng và restart server.

@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Test Statistics API</title>
+  <style>
+    body { font-family: 'Segoe UI', sans-serif; padding: 20px; background: #f5f5f5; }
+    .test-box { background: white; padding: 20px; margin: 10px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    h2 { color: #333; margin-top: 0; }
+    pre { background: #f9f9f9; padding: 15px; border-radius: 4px; overflow-x: auto; font-size: 12px; }
+    .success { color: #28a745; font-weight: bold; }
+    .error { color: #dc3545; font-weight: bold; }
+    button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 4px; cursor: pointer; font-size: 14px; margin-right: 10px; }
+    button:hover { background: #0056b3; }
+    #results { margin-top: 20px; }
+  </style>
+</head>
+<body>
+  <h1>🧪 Test Statistics API</h1>
+  
+  <div class="test-box">
+    <h2>Quick Tests</h2>
+    <button onclick="testEndpoint('/test-db')">Test DB Connection</button>
+    <button onclick="testEndpoint('/overview')">Test Overview</button>
+    <button onclick="testEndpoint('/revenue')">Test Revenue</button>
+    <button onclick="testEndpoint('/orders-status')">Test Orders Status</button>
+    <button onclick="testAll()">Test All Endpoints</button>
+    <button onclick="clearResults()">Clear</button>
+  </div>
+
+  <div id="results"></div>
+
+  <script>
+    const API_BASE = 'http://localhost:3000/statistics';
+    const resultsDiv = document.getElementById('results');
+
+    async function testEndpoint(endpoint) {
+      const testBox = document.createElement('div');
+      testBox.className = 'test-box';
+      testBox.innerHTML = `<h2>Testing: ${endpoint}</h2><p>Loading...</p>`;
+      resultsDiv.insertBefore(testBox, resultsDiv.firstChild);
+
+      try {
+        const start = Date.now();
+        const response = await fetch(API_BASE + endpoint);
+        const duration = Date.now() - start;
+        
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+
+        const data = await response.json();
+        
+        testBox.innerHTML = `
+          <h2>✅ ${endpoint}</h2>
+          <p class="success">Status: ${response.status} | Time: ${duration}ms</p>
+          <pre>${JSON.stringify(data, null, 2)}</pre>
+        `;
+      } catch (error) {
+        testBox.innerHTML = `
+          <h2>❌ ${endpoint}</h2>
+          <p class="error">Error: ${error.message}</p>
+          <pre>${error.stack || 'No stack trace'}</pre>
+        `;
+      }
+    }
+
+    async function testAll() {
+      clearResults();
+      const endpoints = [
+        '/test-db',
+        '/overview',
+        '/revenue',
+        '/orders-status',
+        '/listings-stats',
+        '/games-popularity',
+        '/avg-price-by-game',
+        '/top-sellers',
+        '/top-buyers'
+      ];
+
+      for (const endpoint of endpoints) {
+        await testEndpoint(endpoint);
+        await new Promise(r => setTimeout(r, 200)); // Small delay between tests
+      }
+    }
+
+    function clearResults() {
+      resultsDiv.innerHTML = '';
+    }
+
+    // Auto-test on page load
+    window.addEventListener('DOMContentLoaded', () => {
+      console.log('Test page loaded. Click buttons to test API endpoints.');
+      testEndpoint('/test-db');
+    });
+  </script>
+</body>
+</html>
