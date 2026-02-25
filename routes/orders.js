@@ -3,10 +3,38 @@ const express = require("express");
 const router = express.Router();
 const { sql, connectDB } = require("../db");
 
-// THÔNG TIN ADMIN (Cấu hình cứng hoặc lấy từ DB)
-const ADMIN_CONTACT = {
-    zalo: "0327.734.880"
-};
+// Hàm lấy thông tin ADMIN từ database
+async function getAdminContact() {
+    try {
+        const pool = await connectDB();
+        const result = await pool.request().query(`
+            SELECT TOP 1 SoDienThoai, Email 
+            FROM NguoiDung 
+            WHERE VaiTro = 1
+            ORDER BY MaNguoiDung ASC
+        `);
+
+        if (result.recordset && result.recordset.length > 0) {
+            const admin = result.recordset[0];
+            return {
+                zalo: admin.SoDienThoai || "Không có",
+                email: admin.Email || "Không có"
+            };
+        }
+        
+        // Fallback nếu không tìm thấy admin
+        return {
+            zalo: "Không có",
+            email: "Không có"
+        };
+    } catch (err) {
+        console.error("Lỗi lấy thông tin admin:", err);
+        return {
+            zalo: "Không có",
+            email: "Không có"
+        };
+    }
+}
 
 // 1. TẠO YÊU CẦU MUA (User click nút Mua ở bài Rao Bán)
 // routes/orders.js
@@ -58,12 +86,13 @@ router.post("/create-buy", async (req, res) => {
         await transaction.commit();
 
         const orderId = insertResult.recordset[0].MaDonHang;
+        const adminInfo = await getAdminContact();
 
         res.json({ 
             success: true, 
             message: "Tạo yêu cầu thành công",
             orderId: orderId,
-            adminInfo: ADMIN_CONTACT
+            adminInfo: adminInfo
         });
 
     } catch (err) {
@@ -119,10 +148,12 @@ router.post("/create-contact", async (req, res) => {
                 VALUES (@MaNguoiDung, @MaCanMua, 'BAN', 'ChoXuLy')
             `);
 
+        const adminInfo = await getAdminContact();
+
         res.json({ 
             success: true, 
             message: "Đã gửi yêu cầu liên hệ",
-            adminInfo: ADMIN_CONTACT 
+            adminInfo: adminInfo 
         });
 
     } catch (err) {
