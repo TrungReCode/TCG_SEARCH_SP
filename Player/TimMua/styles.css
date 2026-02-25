@@ -72,3 +72,45 @@
                 0 4px 6px -2px rgba(0, 0, 0, 0.05);
     z-index: 10; /* Đảm bảo card nổi lên trên các phần tử khác */
 }
+
+/* Payment Modal Styles */
+.payment-tab {
+    cursor: pointer;
+    position: relative;
+}
+
+.payment-tab.active {
+    color: #2563eb;
+    border-bottom: 2px solid #2563eb;
+}
+
+.payment-content {
+    display: none;
+}
+
+.payment-content.visible {
+    display: block;
+    animation: fadeIn 0.3s ease-in-out;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+.preset-btn {
+    transition: all 0.2s ease;
+}
+
+.preset-btn.active {
+    background-color: #fef2f2;
+    border-color: #dc2626;
+    color: #dc2626;
+    font-weight: 600;
+}

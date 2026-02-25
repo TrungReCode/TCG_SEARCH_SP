@@ -52,6 +52,10 @@ app.use('/orders', ordersRouter);
 const statisticsRouter = require('./routes/statistics');
 app.use('/statistics', statisticsRouter);
 
+//payment (MoMo)
+const paymentRouter = require('./routes/payment');
+app.use('/payment', paymentRouter);
+
 const loginRouter = require('./routes/login');
 const registerRouter = require('./routes/register');
 

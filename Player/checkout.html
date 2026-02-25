@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Thanh toán MoMo - TCG Hub</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .payment-container {
+            background: white;
+            border-radius: 12px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.2);
+            width: 100%;
+            max-width: 500px;
+            padding: 40px;
+        }
+
+        .payment-header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .payment-header h1 {
+            color: #2c3e50;
+            font-size: 24px;
+            margin-bottom: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+
+        .payment-header p {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+
+        .momo-logo {
+            width: 80px;
+            height: 80px;
+            background: #ff4444;
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            font-size: 40px;
+            margin: 0 auto 20px;
+        }
+
+        .form-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            color: #2c3e50;
+            margin-bottom: 8px;
+            font-size: 14px;
+        }
+
+        input[type="text"],
+        input[type="number"],
+        select {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ecf0f1;
+            border-radius: 8px;
+            font-size: 14px;
+            transition: all 0.3s ease;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        input[type="text"]:focus,
+        input[type="number"]:focus,
+        select:focus {
+            outline: none;
+            border-color: #667eea;
+            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+        }
+
+        .amount-presets {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 10px;
+            margin-bottom: 15px;
+        }
+
+        .preset-btn {
+            padding: 10px;
+            border: 2px solid #ecf0f1;
+            background: white;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 13px;
+            font-weight: 600;
+            color: #7f8c8d;
+            transition: all 0.3s ease;
+        }
+
+        .preset-btn:hover,
+        .preset-btn.active {
+            border-color: #667eea;
+            background: #667eea;
+            color: white;
+        }
+
+        .info-box {
+            background: #f8f9fa;
+            border-left: 4px solid #667eea;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .info-box i {
+            color: #667eea;
+            margin-right: 8px;
+        }
+
+        .payment-summary {
+            background: #f0f2f5;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+            font-size: 13px;
+            color: #555;
+        }
+
+        .summary-row:last-child {
+            margin-bottom: 0;
+            border-top: 1px solid #ddd;
+            padding-top: 10px;
+            font-weight: 600;
+            color: #2c3e50;
+            font-size: 14px;
+        }
+
+        .button-group {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 14px;
+            border: none;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .btn-pay {
+            grid-column: 1 / -1;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-pay:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(102, 126, 234, 0.3);
+        }
+
+        .btn-pay:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .btn-cancel {
+            background: #ecf0f1;
+            color: #7f8c8d;
+        }
+
+        .btn-cancel:hover {
+            background: #ddd;
+        }
+
+        .error-message {
+            background: #ffe5e5;
+            border: 1px solid #ffb3b3;
+            color: #c0392b;
+            padding: 12px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            display: none;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .error-message.show {
+            display: flex;
+        }
+
+        .loading {
+            display: none;
+            text-align: center;
+            padding: 20px;
+        }
+
+        .loading.show {
+            display: block;
+        }
+
+        .spinner {
+            display: inline-block;
+            width: 20px;
+            height: 20px;
+            border: 3px solid #f3f3f3;
+            border-top: 3px solid #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .success-message {
+            display: none;
+        }
+
+        .success-message.show {
+            display: block;
+            text-align: center;
+            padding: 30px 20px;
+        }
+
+        .success-icon {
+            font-size: 60px;
+            color: #2ecc71;
+            margin-bottom: 15px;
+        }
+
+        .success-message h2 {
+            color: #2c3e50;
+            margin-bottom: 10px;
+        }
+
+        .success-message p {
+            color: #7f8c8d;
+            font-size: 14px;
+            margin-bottom: 20px;
+        }
+
+        .qr-code {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .qr-code img {
+            max-width: 200px;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 600px) {
+            .payment-container {
+                padding: 30px 20px;
+            }
+
+            .amount-presets {
+                grid-template-columns: repeat(2, 1fr);
+            }
+
+            .button-group {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="payment-container">
+        <!-- Header -->
+        <div class="payment-header">
+            <div class="momo-logo">
+                <i class="fas fa-mobile-alt"></i>
+            </div>
+            <h1><i class="fas fa-wallet"></i> Thanh toán MoMo</h1>
+            <p>Mua thẻ TCG an toàn và nhanh chóng</p>
+        </div>
+
+        <!-- Error Message -->
+        <div id="errorMessage" class="error-message">
+            <i class="fas fa-exclamation-circle"></i>
+            <span id="errorText"></span>
+        </div>
+
+        <!-- Loading State -->
+        <div id="loadingState" class="loading">
+            <div class="spinner"></div>
+            <p style="margin-top: 15px; color: #7f8c8d;">Đang xử lý thanh toán...</p>
+        </div>
+
+        <!-- Success State -->
+        <div id="successState" class="success-message">
+            <div class="success-icon">
+                <i class="fas fa-check-circle"></i>
+            </div>
+            <h2>Thanh toán thành công!</h2>
+            <p>Giao dịch của bạn đã được xác nhận. Vui lòng chờ để tiếp tục.</p>
+            <button class="btn btn-pay" onclick="window.location.href='/Player/player.html'">
+                <i class="fas fa-arrow-left"></i> Quay lại
+            </button>
+        </div>
+
+        <!-- Payment Form -->
+        <form id="paymentForm" style="display: none;">
+            <!-- User Info (Hidden) -->
+            <input type="hidden" id="userId" name="userId">
+            <input type="hidden" id="raoBanId" name="raoBanId">
+            <input type="hidden" id="canMuaId" name="canMuaId">
+
+            <!-- Product Name -->
+            <div class="form-group">
+                <label>Sản phẩm</label>
+                <input type="text" id="productName" placeholder="Tên sản phẩm" readonly>
+            </div>
+
+            <!-- Amount -->
+            <div class="form-group">
+                <label>Số tiền thanh toán (VND)</label>
+                
+                <!-- Amount Presets -->
+                <div class="amount-presets">
+                    <button type="button" class="preset-btn" onclick="setAmount(50000)">50K</button>
+                    <button type="button" class="preset-btn" onclick="setAmount(100000)">100K</button>
+                    <button type="button" class="preset-btn" onclick="setAmount(200000)">200K</button>
+                    <button type="button" class="preset-btn" onclick="setAmount(500000)">500K</button>
+                    <button type="button" class="preset-btn" onclick="setAmount(1000000)">1M</button>
+                    <button type="button" class="preset-btn" onclick="setAmount(2000000)">2M</button>
+                </div>
+
+                <!-- Custom Amount -->
+                <input type="number" id="amount" placeholder="Nhập số tiền khác" min="10000" step="1000">
+            </div>
+
+            <!-- Info Box -->
+            <div class="info-box">
+                <i class="fas fa-info-circle"></i>
+                <strong>Lưu ý:</strong> Số tiền tối thiểu là 10,000 VND. Phí giao dịch do Momo quản lý.
+            </div>
+
+            <!-- Payment Summary -->
+            <div class="payment-summary">
+                <div class="summary-row">
+                    <span>Số tiền:</span>
+                    <span id="summaryAmount">0 VND</span>
+                </div>
+                <div class="summary-row">
+                    <span>Phương thức:</span>
+                    <span>MoMo Wallet</span>
+                </div>
+                <div class="summary-row">
+                    <span>Tổng cộng:</span>
+                    <span id="summaryTotal">0 VND</span>
+                </div>
+            </div>
+
+            <!-- Action Buttons -->
+            <div class="button-group">
+                <button type="submit" class="btn btn-pay" id="submitBtn">
+                    <i class="fas fa-check"></i> Thanh toán
+                </button>
+                <button type="button" class="btn btn-cancel" onclick="goBack()">
+                    <i class="fas fa-times"></i> Hủy
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <script>
+        // ==================== BIẾN TOÀN CỤC ====================
+        const API_BASE = 'http://localhost:3000';
+        let currentAmount = 0;
+
+        // ==================== KHỞI TẠO ====================
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('[PAYMENT] Page initialized');
+            
+            // Lấy thông tin từ URL parameters
+            const params = new URLSearchParams(window.location.search);
+            const userId = params.get('userId');
+            const raoBanId = params.get('raoBanId');
+            const canMuaId = params.get('canMuaId');
+            const productName = params.get('productName') || 'Mua thẻ TCG';
+            const amount = params.get('amount');
+
+            // Set form values
+            if (userId) document.getElementById('userId').value = userId;
+            if (raoBanId) document.getElementById('raoBanId').value = raoBanId;
+            if (canMuaId) document.getElementById('canMuaId').value = canMuaId;
+            if (productName) document.getElementById('productName').value = productName;
+
+            // Nếu có số tiền từ URL, dùng nó
+            if (amount && !isNaN(amount)) {
+                setAmount(parseInt(amount));
+            }
+
+            // Attach form submit handler
+            document.getElementById('paymentForm').addEventListener('submit', handlePayment);
+            document.getElementById('amount').addEventListener('input', updateSummary);
+
+            // Show payment form
+            document.getElementById('paymentForm').style.display = 'block';
+        });
+
+        // ==================== HÀM HỖ TRỢ ====================
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('vi-VN', {
+                style: 'currency',
+                currency: 'VND'
+            }).format(value || 0);
+        }
+
+        function setAmount(amount) {
+            currentAmount = amount;
+            document.getElementById('amount').value = amount;
+            updateSummary();
+            
+            // Highlight preset button
+            document.querySelectorAll('.preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (parseInt(btn.textContent) * 1000 === amount || parseInt(btn.textContent.replace('K', '')) * 1000 === amount || parseInt(btn.textContent.replace('M', '')) * 1000000 === amount) {
+                    btn.classList.add('active');
+                }
+            });
+        }
+
+        function updateSummary() {
+            const amount = parseInt(document.getElementById('amount').value) || 0;
+            currentAmount = amount;
+            document.getElementById('summaryAmount').textContent = formatCurrency(amount);
+            document.getElementById('summaryTotal').textContent = formatCurrency(amount);
+        }
+
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            document.getElementById('errorText').textContent = message;
+            errorDiv.classList.add('show');
+            setTimeout(() => {
+                errorDiv.classList.remove('show');
+            }, 5000);
+        }
+
+        function showLoading(show = true) {
+            document.getElementById('loadingState').classList.toggle('show', show);
+            document.getElementById('paymentForm').style.display = show ? 'none' : 'block';
+        }
+
+        function showSuccess() {
+            document.getElementById('loadingState').classList.remove('show');
+            document.getElementById('paymentForm').style.display = 'none';
+            document.getElementById('successState').classList.add('show');
+        }
+
+        function goBack() {
+            window.history.back();
+        }
+
+        // ==================== THANH TOÁN ====================
+        async function handlePayment(e) {
+            e.preventDefault();
+
+            const userId = document.getElementById('userId').value;
+            const amount = parseInt(document.getElementById('amount').value) || 0;
+            const raoBanId = document.getElementById('raoBanId').value;
+            const canMuaId = document.getElementById('canMuaId').value;
+            const productName = document.getElementById('productName').value;
+
+            // Validate
+            if (!userId) {
+                showError('Vui lòng đăng nhập');
+                return;
+            }
+
+            if (amount < 10000) {
+                showError('Số tiền tối thiểu là 10,000 VND');
+                return;
+            }
+
+            try {
+                showLoading(true);
+
+                // Gửi request khởi tạo thanh toán
+                const response = await fetch(`${API_BASE}/payment/initiate-momo`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({
+                        MaNguoiDung: parseInt(userId),
+                        MaRaoBan: raoBanId ? parseInt(raoBanId) : null,
+                        MaCanMua: canMuaId ? parseInt(canMuaId) : null,
+                        Amount: amount,
+                        TenSanPham: productName
+                    })
+                });
+
+                const result = await response.json();
+
+                if (!result.success) {
+                    throw new Error(result.error || 'Lỗi khởi tạo thanh toán');
+                }
+
+                console.log('[PAYMENT] Khởi tạo thành công:', result);
+
+                // Chuyển hướng sang MoMo
+                if (result.payUrl) {
+                    window.location.href = result.payUrl;
+                } else if (result.qrCodeUrl) {
+                    // Nếu có QR code, hiển thị nó
+                    showQRCode(result.qrCodeUrl);
+                } else {
+                    throw new Error('Không nhận được URL thanh toán từ MoMo');
+                }
+
+            } catch (err) {
+                showLoading(false);
+                console.error('[PAYMENT] Lỗi:', err.message);
+                showError(err.message);
+            }
+        }
+
+        function showQRCode(qrUrl) {
+            showLoading(false);
+            // TODO: Hiển thị QR code và hướng dẫn quét
+            showError('QR Code: ' + qrUrl);
+        }
+
+        // ==================== KIỂM TRA KẾT QUẢ ====================
+        window.addEventListener('load', () => {
+            const params = new URLSearchParams(window.location.search);
+            if (params.get('payment') === 'success') {
+                showSuccess();
+            } else if (params.get('payment') === 'failed') {
+                showError('Thanh toán thất bại: ' + decodeURIComponent(params.get('message') || 'Lỗi không xác định'));
+            }
+        });
+    </script>
+</body>
+</html>

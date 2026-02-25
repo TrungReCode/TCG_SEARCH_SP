@@ -546,6 +546,147 @@ const Orders = {
 
 /**
  * ====================================================================
+ * PAYMENT MODULE - Xử lý thanh toán MoMo & Tab switching
+ * ====================================================================
+ */
+const Payment = {
+    currentOrder: null, // Lưu thông tin đơn hàng hiện tại
+
+    init: () => {
+        // Setup tab switching
+        const tabs = document.querySelectorAll('.payment-tab');
+        tabs.forEach(tab => {
+            tab.addEventListener('click', Payment.switchTab);
+        });
+    },
+
+    switchTab: (e) => {
+        const tabName = e.target.dataset.tab;
+        if (!tabName) return;
+
+        // Update active tab
+        document.querySelectorAll('.payment-tab').forEach(t => t.classList.remove('active'));
+        e.target.classList.add('active');
+
+        // Hide all content, show selected
+        document.querySelectorAll('.payment-content').forEach(c => c.classList.remove('visible'));
+        const content = document.getElementById(`tab-${tabName}`);
+        if (content) content.classList.add('visible');
+    },
+
+    setAmount: (amount) => {
+        const input = document.getElementById('momoAmount');
+        if (input) {
+            input.value = amount;
+            Payment.updateSummary();
+            
+            // Highlight preset button
+            document.querySelectorAll('#momoPresets .preset-btn').forEach(btn => {
+                btn.classList.remove('active');
+                if (btn.textContent.includes(amount > 1000000 ? 'M' : amount > 999 ? 'K' : '')) {
+                    const btnAmount = Payment.parseAmount(btn.textContent);
+                    if (btnAmount === amount) btn.classList.add('active');
+                }
+            });
+        }
+    },
+
+    updateSummary: () => {
+        const amount = parseInt(document.getElementById('momoAmount')?.value || 0);
+        const amountDisplay = new Intl.NumberFormat('vi-VN', {
+            style: 'currency',
+            currency: 'VND'
+        }).format(amount);
+
+        const summaryAmount = document.getElementById('momoSummaryAmount');
+        const summaryTotal = document.getElementById('momoSummaryTotal');
+        if (summaryAmount) summaryAmount.textContent = amountDisplay;
+        if (summaryTotal) summaryTotal.textContent = amountDisplay;
+    },
+
+    parseAmount: (text) => {
+        if (text.includes('M')) return parseInt(text.replace('M', '')) * 1000000;
+        if (text.includes('K')) return parseInt(text.replace('K', '')) * 1000;
+        return parseInt(text);
+    },
+
+    async handleMoMoPayment() {
+        if (!Payment.currentOrder) {
+            alert('Lỗi: Thông tin đơn hàng không tồn tại');
+            return;
+        }
+
+        const amount = parseInt(document.getElementById('momoAmount')?.value || 0);
+        if (amount < 10000) {
+            alert('Số tiền tối thiểu là 10,000 VND');
+            return;
+        }
+
+        const btn = document.getElementById('btnMoMoPay');
+        const originalText = btn.innerHTML;
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Đang xử lý...';
+
+        try {
+            // Khởi tạo thanh toán MoMo
+            const response = await Utils.fetchData(`${CONFIG.API_BASE}/payment/initiate-momo`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    MaNguoiDung: CONFIG.USER_ID,
+                    MaRaoBan: Payment.currentOrder.raoBanId || null,
+                    Amount: amount,
+                    TenSanPham: Payment.currentOrder.productName
+                })
+            });
+
+            if (response.success && response.payUrl) {
+                // Chuyển hướng sang MoMo
+                console.log('[PAYMENT] Redirecting to MoMo:', response.payUrl);
+                window.location.href = response.payUrl;
+            } else {
+                throw new Error(response.error || 'Lỗi khởi tạo thanh toán');
+            }
+
+        } catch (err) {
+            console.error('[PAYMENT] Error:', err);
+            alert('Lỗi: ' + err.message);
+            btn.disabled = false;
+            btn.innerHTML = originalText;
+        }
+    },
+
+    showModal: (adminInfo, orderInfo) => {
+        Payment.currentOrder = orderInfo;
+        
+        // Set Zalo info
+        if (DOM.btnZaloContact && DOM.txtZaloPhone) {
+            const zaloNumber = adminInfo?.zalo ?? '0327734880';
+            DOM.btnZaloContact.href = `https://zalo.me/${zaloNumber}`;
+            DOM.txtZaloPhone.textContent = zaloNumber;
+        }
+        
+        if (DOM.transContent) {
+            DOM.transContent.textContent = orderInfo.contentMsg || 'Cập nhật thành công';
+        }
+
+        // Reset to MoMo tab
+        document.querySelectorAll('.payment-tab').forEach(t => t.classList.remove('active'));
+        document.querySelector('.payment-tab[data-tab="momo"]')?.classList.add('active');
+        
+        document.querySelectorAll('.payment-content').forEach(c => c.classList.remove('visible'));
+        document.getElementById('tab-momo')?.classList.add('visible');
+
+        // Reset amount input
+        document.getElementById('momoAmount').value = '';
+        Payment.updateSummary();
+
+        Utils.modal.show(DOM.modalTrans);
+    }
+};
+
+/**
+ * ====================================================================
  * 6. MODULE: TRANSACTIONS (XỬ LÝ MUA/BÁN)
  * ====================================================================
  */
@@ -553,7 +694,7 @@ const Transaction = {
     handlePurchase: async (maRaoBan, giaBan) => {
         if (event) event.stopPropagation();
         if (!CONFIG.USER_ID) return alert("Vui lòng đăng nhập!");
-        if (!confirm("Bạn muốn mua thẻ này? Admin sẽ là trung gian giao dịch.")) return;
+        if (!confirm("Bạn muốn mua thẻ này? Chọn phương thức thanh toán.")) return;
 
         const btn = event.target;
         const originalText = btn.innerText;
@@ -567,7 +708,13 @@ const Transaction = {
 
             if (data.success) {
                 Utils.modal.closeAll();
-                Transaction.showModal(data.adminInfo, `MUA DH${data.orderId}`);
+                
+                // Show payment modal with order info
+                Payment.showModal(data.adminInfo, {
+                    raoBanId: maRaoBan,
+                    productName: `Mua thẻ - Đơn hàng ${data.orderId}`,
+                    contentMsg: `MUA DH${data.orderId}`
+                });
                 
                 // Refresh data
                 Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value).catch(() => {});
@@ -594,7 +741,11 @@ const Transaction = {
             });
 
             if (data.success) {
-                Transaction.showModal(data.adminInfo, `BAN THE YEU CAU #${maCanMua}`);
+                Payment.showModal(data.adminInfo, {
+                    canMuaId: maCanMua,
+                    productName: `Đáp ứng tin cần mua #${maCanMua}`,
+                    contentMsg: `BAN THE YEU CAU #${maCanMua}`
+                });
                 btn.className = "text-xs border border-orange-300 text-orange-600 bg-orange-50 px-2 py-1 rounded cursor-not-allowed";
                 btn.innerHTML = '<i class="fas fa-clock"></i> Đang chờ xử lý';
             } else { 
@@ -607,16 +758,8 @@ const Transaction = {
         }
     },
 
-    showModal: (adminInfo, contentMsg) => {
-        const zaloNumber = adminInfo?.zalo ?? "0327734880"; 
-        
-        if (DOM.btnZaloContact && DOM.txtZaloPhone) {
-            DOM.btnZaloContact.href = `https://zalo.me/${zaloNumber}`;
-            DOM.txtZaloPhone.textContent = zaloNumber;
-            DOM.btnZaloContact.classList.remove('hidden');
-        }
-        if (DOM.transContent) DOM.transContent.textContent = contentMsg;
-        Utils.modal.show(DOM.modalTrans);
+    showModal: (adminInfo, orderInfo) => {
+        Payment.showModal(adminInfo, orderInfo);
     }
 };
 
@@ -639,7 +782,15 @@ window.closeMyWant = Buying.closeWant;
 window.openMyOrdersModal = Orders.openModal;
 window.cancelMyOrder = Orders.cancel;
 
+// Payment functions
+window.setMoMoAmount = Payment.setAmount;
+window.updateMomoSummary = Payment.updateSummary;
+window.handleMoMoPayment = Payment.handleMoMoPayment;
+
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize payment system
+    Payment.init();
+    
     Marketplace.fetchGames();
     Marketplace.fetchList();
     Buying.fetchList();
@@ -656,4 +807,19 @@ document.addEventListener('DOMContentLoaded', () => {
     DOM.searchInput?.addEventListener('input', handleFilterChange);
     DOM.gameFilter?.addEventListener('change', handleFilterChange);
     DOM.formAddWant?.addEventListener("submit", Buying.submitForm);
+
+    // Check payment result from URL parameters
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('payment') === 'success') {
+        const orderId = params.get('orderId');
+        alert(`✓ Thanh toán thành công! Order ID: ${orderId}`);
+        Orders.fetchList(true);
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    } else if (params.get('payment') === 'failed') {
+        const message = decodeURIComponent(params.get('message') || 'Lỗi không xác định');
+        alert(`✗ Thanh toán thất bại: ${message}`);
+        // Clean URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+    }
 });
