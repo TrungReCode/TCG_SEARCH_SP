@@ -62,7 +62,15 @@ const registerRouter = require('./routes/register');
 app.use('/login', loginRouter);
 app.use('/register', registerRouter);
 
-// Khởi chạy server
-connectDB().then(() => {
-  app.listen(3000, () => console.log("Server chạy: http://localhost:3000"));
-});
+if (process.env.VERCEL) {
+  connectDB().catch((error) => {
+    console.error('Kết nối database thất bại trên Vercel:', error.message);
+  });
+} else {
+  const port = process.env.PORT || 3000;
+  connectDB().then(() => {
+    app.listen(port, () => console.log(`Server chạy: http://localhost:${port}`));
+  });
+}
+
+module.exports = app;
