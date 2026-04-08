@@ -650,6 +650,21 @@ const Payment = {
 
         } catch (err) {
             console.error('[PAYMENT] Error:', err);
+            if (Payment.currentOrder?.orderId) {
+                try {
+                    await Utils.fetchData(`${API.ORDERS}/cancel-my-order/${Payment.currentOrder.orderId}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ maNguoiDung: CONFIG.USER_ID })
+                    });
+
+                    Marketplace.fetchList(DOM.searchInput.value, DOM.gameFilter.value).catch(() => {});
+                    Buying.checkMatches().catch(() => {});
+                    Orders.fetchList(true).catch(() => {});
+                } catch (cancelErr) {
+                    console.error('[PAYMENT] Không thể hủy đơn tạm:', cancelErr);
+                }
+            }
             alert('Lỗi: ' + err.message);
             btn.disabled = false;
             btn.innerHTML = originalText;
@@ -711,6 +726,7 @@ const Transaction = {
                 
                 // Show payment modal with order info
                 Payment.showModal(data.adminInfo, {
+                    orderId: data.orderId,
                     raoBanId: maRaoBan,
                     productName: `Mua thẻ - Đơn hàng ${data.orderId}`,
                     contentMsg: `MUA DH${data.orderId}`
